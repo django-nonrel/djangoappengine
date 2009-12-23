@@ -25,7 +25,7 @@ from django.core.management.base import BaseCommand
 
 
 def start_dev_appserver(argv):
-  """Starts the appengine dev_appserver program for the Django project.
+  """Starts the App Engine dev_appserver program for the Django project.
 
   The appserver is run with default parameters. If you need to pass any special
   parameters to the dev_appserver you will have to invoke it manually.
@@ -79,10 +79,10 @@ class Command(BaseCommand):
     """Overrides the default Django runserver command.
 
     Instead of starting the default Django development server this command
-    fires up a copy of the full fledged appengine dev_appserver that emulates
+    fires up a copy of the full fledged App Engine dev_appserver that emulates
     the live environment your application will be deployed to.
     """
-    help = 'Runs a copy of the appengine development server.'
+    help = 'Runs a copy of the App Engine development server.'
     args = '[optional port number, or ipaddr:port]'
 
     def run_from_argv(self, argv):

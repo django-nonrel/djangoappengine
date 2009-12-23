@@ -1,10 +1,15 @@
-# -*- coding: utf-8 -*-
-import logging, os, sys
+import os, sys
 
-COMMON_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+# We allow a two-level project structure where your root folder contains
+# project-specific apps and the "common" subfolder contains common apps.
+COMMON_DIR = os.path.dirname(os.path.dirname(__file__))
 PROJECT_DIR = os.path.dirname(COMMON_DIR)
-ZIP_PACKAGES_DIRS = (os.path.join(PROJECT_DIR, 'zip-packages'),
-                     os.path.join(COMMON_DIR, 'zip-packages'))
+if os.path.basename(COMMON_DIR) == 'common-apps':
+    MAIN_DIRS = (PROJECT_DIR, COMMON_DIR)
+else:
+    PROJECT_DIR = COMMON_DIR
+    MAIN_DIRS = (PROJECT_DIR,)
+
 # Overrides for os.environ
 env_ext = {'DJANGO_SETTINGS_MODULE': 'settings'}
 
@@ -20,7 +25,8 @@ def setup_env():
         # Not on the system path. Build a list of alternative paths where it
         # may be. First look within the project for a local copy, then look for
         # where the Mac OS SDK installs it.
-        paths = [os.path.join(COMMON_DIR, '.google_appengine'),
+        paths = [os.path.join(PROJECT_DIR, '.google_appengine'),
+                 os.path.join(COMMON_DIR, '.google_appengine'),
                  '/usr/local/google_appengine',
                  '/Applications/GoogleAppEngineLauncher.app/Contents/Resources/GoogleAppEngine-default.bundle/Contents/Resources/google_appengine']
         for path in os.environ.get('PATH', '').replace(';', ':').split(':'):
@@ -40,8 +46,7 @@ def setup_env():
         if SDK_PATH is None:
             # The SDK could not be found in any known location.
             sys.stderr.write('The Google App Engine SDK could not be found!\n'
-                             'Visit http://code.google.com/p/app-engine-patch/'
-                             ' for installation instructions.\n')
+                             "Make sure it's accessible via your PATH environment.")
             sys.exit(1)
         # Add the SDK and the libraries within it to the system path.
         EXTRA_PATHS = [SDK_PATH]
@@ -58,9 +63,6 @@ def setup_env():
         sys.path = EXTRA_PATHS + sys.path
         from google.appengine.api import apiproxy_stub_map
 
-    # Add this folder to sys.path
-    sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
-
     setup_project()
     setup_logging()
 
@@ -74,6 +76,8 @@ def setup_threading():
         pass
 
 def setup_logging():
+    import logging
+
     # Fix Python 2.6 logging module
     logging.logMultiprocessing = 0
 
@@ -93,23 +97,14 @@ def setup_project():
 
     os.environ.update(env_ext)
 
-    # Add the two parent folders and appenginepatcher's lib folder to sys.path.
-    # The current folder has to be added in main.py or setup_env(). This
-    # suggests a folder structure where you separate reusable code from project
-    # code:
-    # project -> common -> appenginepatch
-    # You can put a custom Django version into the "common" folder, for example.
-    EXTRA_PATHS = [
-        PROJECT_DIR,
-        COMMON_DIR,
-        os.path.dirname(PROJECT_DIR),
-    ]
+    EXTRA_PATHS = list(MAIN_DIRS)
+    EXTRA_PATHS.append(os.path.dirname(PROJECT_DIR))
+    EXTRA_PATHS.append(os.path.join(os.path.dirname(__file__), 'lib'))
 
-    EXTRA_PATHS.append(os.path.join(os.path.abspath(os.path.dirname(__file__)),
-        'lib'))
+    ZIP_PACKAGES_DIRS = tuple(os.path.join(dir, 'zip-packages')
+                              for dir in MAIN_DIRS)
 
     # We support zipped packages in the common and project folders.
-    # The files must be in the packages folder.
     for packages_dir in ZIP_PACKAGES_DIRS:
         if os.path.isdir(packages_dir):
             for zip_package in os.listdir(packages_dir):

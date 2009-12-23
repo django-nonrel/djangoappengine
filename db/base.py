@@ -143,7 +143,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             args = dev_appserver_main.DEFAULT_ARGS.copy()
             args['datastore_path'], args['history_path'] = self._get_paths()
             from google.appengine.tools import dev_appserver
-            dev_appserver.SetupStubs(appid, ** args)
+            dev_appserver.SetupStubs(appid, **args)
         # If we're supposed to set up the remote_api, do that now.
         if not self.use_test_datastore: # Never when testing
             if self.use_remote:

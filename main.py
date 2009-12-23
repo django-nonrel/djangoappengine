@@ -1,22 +1,21 @@
-# -*- coding: utf-8 -*-
 import os, sys
 
-# Add parent folder to sys.path, so we can import aecmd.
+# Add parent folder to sys.path, so we can import boot.
 # App Engine causes main.py to be reloaded if an exception gets raised
 # on the first request of a main.py instance, so don't add parent_dir multiple
 # times.
 parent_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 if parent_dir not in sys.path:
-    sys.path = [parent_dir] + sys.path
+    sys.path.insert(0, parent_dir)
 
 # Remove the standard version of Django
 for k in [k for k in sys.modules if k.startswith('django')]:
     del sys.modules[k]
 
-from djangoappengine import aecmd
-aecmd.setup_threading()
-aecmd.setup_project()
-aecmd.setup_logging()
+from djangoappengine import boot
+boot.setup_threading()
+boot.setup_project()
+boot.setup_logging()
 
 import django.core.handlers.wsgi
 from google.appengine.ext.webapp import util
@@ -29,8 +28,8 @@ def real_main():
         sys.path = path_backup[:]
     except:
         path_backup = sys.path[:]
-    os.environ.update(aecmd.env_ext)
-    aecmd.setup_logging()
+    os.environ.update(boot.env_ext)
+    boot.setup_logging()
 
     # Create a Django application for WSGI.
     application = django.core.handlers.wsgi.WSGIHandler()

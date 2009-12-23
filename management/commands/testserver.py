@@ -27,7 +27,7 @@ class Command(BaseCommand):
     """Overrides the default Django testserver command.
 
     Instead of starting the default Django development server this command fires
-    up a copy of the full fledged appengine dev_appserver.
+    up a copy of the full fledged App Engine dev_appserver.
 
     The appserver is always initialised with a blank datastore with the specified
     fixtures loaded into it.

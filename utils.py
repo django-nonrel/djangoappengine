@@ -8,11 +8,12 @@ if have_appserver:
 else:
     try:
         from google.appengine.tools import dev_appserver
-        from aecmd import PROJECT_DIR
+        from .boot import PROJECT_DIR
         appconfig, unused = dev_appserver.LoadAppConfig(PROJECT_DIR, {})
         appid = appconfig.application
-    except ImportError:
-        appid = None
+    except ImportError, e:
+        raise Exception('Could not get appid. Is your app.yaml file missing? '
+                        'Error was: %s' % e)
 
 on_production_server = have_appserver and \
     not os.environ.get('SERVER_SOFTWARE', '').lower().startswith('devel')
