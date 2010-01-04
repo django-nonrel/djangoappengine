@@ -59,3 +59,6 @@ class EmailBackend(BaseEmailBackend):
     def _defer_message(self, message):
         from google.appengine.ext import deferred
         deferred.defer(_send_deferred, message)
+
+class AsyncEmailBackend(EmailBackend):
+    can_defer = True

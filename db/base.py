@@ -1,7 +1,3 @@
-"""
-App Engine backend for Django.
-"""
-
 from .creation import DatabaseCreation
 from ..utils import appid, have_appserver, on_production_server
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseOperations, \
