@@ -15,20 +15,22 @@ class FieldDBConversionTest(TestCase):
             datetime=actual_datetime, date=actual_datetime.date(),
             time=actual_datetime.time(), floating_point=5.97, boolean=True,
             null_boolean=False, text='Hallo', email='hallo@hallo.com',
+            comma_seperated_integer="5,4,3,2",
             ip_address='194.167.1.1', slug='you slugy slut :)',
             url='http://www.scholardocs.com', long_text=1000*'A', xml=2000*'B',
             integer=-400, small_integer=-4, positiv_integer=400,
             positiv_small_integer=4)
         entity.save()
 
-        # get the gae entity (not the model instance) and test if the fields
-        # have been converted right to the corresponding gae database types
+        # get the gae entity (not the django model instance) and test if the
+        # fields have been converted right to the corresponding gae database types
         gae_entity = Get(Key.from_path(FieldsWithoutOptionsModel._meta.db_table,
             entity.pk))
 
         for name, gae_db_type in [('long_text', Text), ('xml', Text),
                 ('text', unicode), ('ip_address', unicode), ('slug', unicode),
-                ('email', unicode), ('url', unicode), ('time', datetime.datetime),
+                ('email', unicode),('comma_seperated_integer', unicode),
+                ('url', unicode), ('time', datetime.datetime),
                 ('datetime', datetime.datetime), ('date', datetime.datetime),
                 ('floating_point', float), ('boolean', bool),
                 ('null_boolean', bool), ('integer', (int, long)),
@@ -44,7 +46,8 @@ class FieldDBConversionTest(TestCase):
         entity = FieldsWithoutOptionsModel.objects.get()
         for name, expected_type in [('long_text', unicode), ('xml', unicode),
                 ('text', unicode), ('ip_address', unicode), ('slug', unicode),
-                ('email', unicode), ('url', unicode), ('datetime', datetime.datetime),
+                ('email', unicode), ('comma_seperated_integer', unicode),
+                ('url', unicode), ('datetime', datetime.datetime),
                 ('date', datetime.date), ('time', datetime.time),
                 ('floating_point', float), ('boolean', bool),
                 ('null_boolean', bool), ('integer', (int, long)),
