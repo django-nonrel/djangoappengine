@@ -26,6 +26,7 @@ class DatabaseCreation(BaseDatabaseCreation):
         'SmallIntegerField': 'integer',
         'PositiveIntegerField': 'integer',
         'PositiveSmallIntegerField': 'integer',
+        'BigIntegerField':   'long',
         'AutoField':         'integer',
         'OneToOneField':     'integer',
         'DecimalField':      'decimal',

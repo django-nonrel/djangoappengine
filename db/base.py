@@ -70,6 +70,9 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 
 class DatabaseOperations(BaseDatabaseOperations):
     query_backend = 'djangoappengine.db.backend.QueryBackend'
+    distinguish_insert_from_update = False
+    supports_deleting_related_objects = False
+    supports_multi_table_inheritance = False
 
     def quote_name(self, name):
         return name
