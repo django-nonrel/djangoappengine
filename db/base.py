@@ -69,6 +69,8 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     pass
 
 class DatabaseOperations(BaseDatabaseOperations):
+    query_backend = 'djangoappengine.db.backend.QueryBackend'
+
     def quote_name(self, name):
         return name
 
