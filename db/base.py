@@ -66,13 +66,12 @@ def destroy_datastore(datastore_path, history_path):
                 logging.error("Failed to clear datastore: %s" % error)
 
 class DatabaseFeatures(BaseDatabaseFeatures):
-    pass
+    distinguishes_insert_from_update = False
+    supports_deleting_related_objects = False
+    supports_multi_table_inheritance = False
 
 class DatabaseOperations(BaseDatabaseOperations):
     query_backend = 'djangoappengine.db.backend.QueryBackend'
-    distinguish_insert_from_update = False
-    supports_deleting_related_objects = False
-    supports_multi_table_inheritance = False
 
     def quote_name(self, name):
         return name
