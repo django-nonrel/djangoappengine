@@ -71,7 +71,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     supports_multi_table_inheritance = False
 
 class DatabaseOperations(BaseDatabaseOperations):
-    query_backend = 'djangoappengine.db.backend.QueryBackend'
+    compiler_module = 'djangoappengine.db.compiler'
 
     def quote_name(self, name):
         return name
@@ -89,7 +89,11 @@ class DatabaseOperations(BaseDatabaseOperations):
         return value
 
 #    def value_to_db_decimal(self, value, max_digits, decimal_places):
-#        return 
+#        return
+
+    def check_aggregate_support(self, aggregate):
+        # TODO: Only COUNT(*) should be supported. Raise NotImplementedError
+        pass
 
 class DatabaseClient(BaseDatabaseClient):
     pass

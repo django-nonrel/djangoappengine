@@ -1,7 +1,10 @@
 import datetime
 from django.conf import settings
 from django.core import exceptions
-from django.db.backends import BaseQueryBackend
+# TODO: Use a separate base compiler class?
+from django.db.models.sql import aggregates as sqlaggregates
+from django.db.models.sql.compiler import SQLCompiler as BaseSQLCompiler
+from django.db.models.sql.constants import LOOKUP_SEP, MULTI, SINGLE
 from django.db.models.sql.datastructures import Empty
 from django.db.models.sql.where import AND, OR
 from django.utils.tree import Node
@@ -33,7 +36,7 @@ NEGATION_MAP = {
     #'exact': '!=', # this might actually become individual '<' and '>' queries
 }
 
-class QueryBackend(BaseQueryBackend):
+class SQLCompiler(BaseSQLCompiler):
     """
     A simple App Engine query: no joins, no distinct, etc.
     """
@@ -43,6 +46,24 @@ class QueryBackend(BaseQueryBackend):
     # ----------------------------------------------
     # Public API
     # ----------------------------------------------
+    def execute_sql(self, result_type=MULTI):
+        """
+        Handles aggregate/count queries
+        """
+        aggregates = self.query.aggregate_select.values()
+        # Simulate a count()
+        if aggregates:
+            assert len(aggregates) == 1
+            aggregate = aggregates[0]
+            assert isinstance(aggregate, sqlaggregates.Count)
+            assert aggregate.col == '*'
+            count = self.get_count()
+            if result_type is SINGLE:
+                return [count]
+            elif result_type is MULTI:
+                return [[count]]
+        raise NotImplementedError()
+
     def results_iter(self):
         """
         Returns an iterator over the results from executing this query.
@@ -58,10 +79,10 @@ class QueryBackend(BaseQueryBackend):
         for entity in results:
             # TODO: GAE: support parents via GAEKeyField
             assert entity.key().parent() is None, "Parents are not yet supported!"
-            entity[self.querydata.get_meta().pk.column] = entity.key().id_or_name()
+            entity[self.query.get_meta().pk.column] = entity.key().id_or_name()
             # TODO: support lazy loading of fields
             result = []
-            for field in self.querydata.get_meta().local_fields:
+            for field in self.query.get_meta().local_fields:
                 if not field.null and entity.get(field.column,
                         field.default) is None:
                     raise ValueError("Non-nullable field %s can't be None!" % field.name)
@@ -69,6 +90,12 @@ class QueryBackend(BaseQueryBackend):
                     entity.get(field.column, field.default)))
             yield result
 
+    def has_results(self):
+        return self.get_count(check_exists=True)
+
+    # ----------------------------------------------
+    # Internal API
+    # ----------------------------------------------
     def get_count(self, check_exists=False):
         """
         Counts matches using the current filter constraints.
@@ -79,59 +106,20 @@ class QueryBackend(BaseQueryBackend):
             return len(self.get_matching_pk(pk_filters, gae_filters))
 
         if check_exists:
-            low_mark = 0
             high_mark = 1
         else:
-            low_mark, high_mark = self.limits
+            high_mark = self.limits[1]
 
-        number = query.Count(high_mark)
-        number = max(0, number - low_mark)
-        return number
-
-    def has_results(self):
-        return self.get_count(check_exists=True)
-
-    def insert(self, insert_values, raw_values=False, return_id=False):
-        # Validate that non-nullable fields are not set to None
-        for field, value in insert_values:
-            if not field.null and value is None:
-                raise ValueError("You can't set %s (a non-nullable field) to None!" % field.name)
-        return self.insert_or_update(insert_values, raw_values, return_id)
-
-    def delete_batch(self, pk_list):
-        db_table = self.querydata.get_meta().db_table
-        Delete([key for key in [create_key(db_table, pk) for pk in pk_list]
-                if key is not None])
-
-    # ----------------------------------------------
-    # Internal API
-    # ----------------------------------------------
-    def insert_or_update(self, insert_values, raw_values, return_id):
-        kwds = {}
-        data = {}
-        for field, value in insert_values:
-            value = self.convert_value_for_db(field.db_type(), value)
-            if field.primary_key:
-                if isinstance(value, basestring):
-                    kwds['name'] = value
-                else:
-                    kwds['id'] = value
-            else:
-                data[field.column] = value
-        entity = Entity(self.querydata.get_meta().db_table, **kwds)
-        entity.update(data)
-        key = Put(entity)
-        if return_id:
-            return key.id_or_name()
+        return query.Count(high_mark)
 
     def build_query(self):
-        query = Query(self.querydata.get_meta().db_table)
+        query = Query(self.query.get_meta().db_table)
         # TODO/CLEANUP: The negation handling code could be moved into a separate base class
         # since it's reusable between non-relational backends.
         self.negated = False
         self.inequality_field = None
 
-        pk_filters, gae_filters = self._add_filters_to_query(query, self.querydata.filters)
+        pk_filters, gae_filters = self._add_filters_to_query(query, self.query.where)
 
         del self.negated
         del self.inequality_field
@@ -139,22 +127,23 @@ class QueryBackend(BaseQueryBackend):
         # TODO: Add select_related (maybe as separate class/layer, though)
 
         ordering = []
-        for order in self.querydata.get_ordering():
+        for order in self._get_ordering():
             if order == '?':
-                raise TypeError("Randomized ordering isn't supported by App Engine")
+                raise TypeError("Randomized ordering isn't supported on App Engine")
+            if LOOKUP_SEP in order:
+                raise TypeError("Ordering can't span tables on App Engine (%s)" % order)
             if order.startswith('-'):
                 order, direction = order[1:], Query.DESCENDING
             else:
                 direction = Query.ASCENDING
-            if order in (self.querydata.get_meta().pk.column, 'pk'):
+            if order in (self.query.get_meta().pk.column, 'pk'):
                 order = '__key__'
             ordering.append((order, direction))
         query.Order(*ordering)
 
-        # TODO: FIXME: GAE: This at least satisfies the most basic unit tests
+        # This at least satisfies the most basic unit tests
         if settings.DEBUG:
-            from django import db
-            db.connection.queries.append({})
+            self.connection.queries.append({'sql': '%r ORDER %r' % (query, ordering)})
         return query, pk_filters, gae_filters
 
     def _add_filters_to_query(self, query, filters):
@@ -164,13 +153,18 @@ class QueryBackend(BaseQueryBackend):
 
         if not self.negated and filters.connector != AND:
             raise TypeError("Only AND filters are supported")
-        if self.negated and filters.connector != OR and len(filters.children) > 1:
-            raise TypeError("When negating a whole filter subgroup (e.g., a Q object) the "
-                            "subgroup filters must be connected via OR ,so the App Engine "
-                            "backend can convert them like this: "
+
+        # Remove unneeded children from tree
+        children = get_children(filters.children)
+
+        if self.negated and filters.connector != OR and len(children) > 1:
+            raise TypeError("When negating a whole filter subgroup (e.g., a Q "
+                            "object) the subgroup filters must be connected "
+                            "via OR, so the App Engine backend can convert "
+                            "them like this: "
                             '"not (a OR b) => (not a) AND (not b)".')
 
-        for child in filters.children:
+        for child in children:
             if isinstance(child, Node):
                 sub_pk_filters, sub_gae_filters = self._add_filters_to_query(
                     query, child)
@@ -183,11 +177,15 @@ class QueryBackend(BaseQueryBackend):
                 gae_filters.extend(sub_gae_filters)
                 continue
 
-            joins, db_table, column, is_primary_key, lookup_type, \
-                field, value = child
-            db_type = field.db_type()
-            value = field.get_db_prep_lookup(lookup_type, value,
-                connection=self.connection, prepared=True)
+            constraint, lookup_type, annotation, value = child
+            assert hasattr(constraint, 'process')
+            packed, value = constraint.process(lookup_type, value, self.connection)
+            alias, column, db_type = packed
+            # TODO: Add more reliable check that also works with JOINs
+            is_primary_key = column == self.query.get_meta().pk.column
+            # TODO: fill with real data
+            joins = None
+            db_table = self.query.get_meta().db_table
 
             if joins:
                 raise TypeError("Joins aren't supported")
@@ -201,7 +199,7 @@ class QueryBackend(BaseQueryBackend):
                                     'can be used with lists.'
                                     % lookup_type)
                 elif lookup_type == 'isnull':
-                    value = None
+                    value = annotation
                 else:
                     value = value[0]
 
@@ -231,11 +229,12 @@ class QueryBackend(BaseQueryBackend):
                 raise TypeError("Lookup type %r isn't supported" % lookup_type)
 
             if lookup_type == 'isnull':
-                if self.negated:
-                    # anything is greater than None
+                if (self.negated and value) or not value:
+                    # TODO/XXX: is everything greater than None?
                     op = '>'
                 else:
                     op = '='
+                value = None
             elif self.negated:
                 try:
                     op = self.negation_map[lookup_type]
@@ -257,12 +256,31 @@ class QueryBackend(BaseQueryBackend):
 
         return pk_filters, gae_filters
 
+    def _get_ordering(self):
+        # TODO: This should be reusable and also support JOINs
+        if not self.query.default_ordering:
+            ordering = self.query.order_by
+        else:
+            ordering = self.query.order_by or self.query.get_meta().ordering
+        ordering = [order.lstrip('+') for order in ordering]
+        if not self.query.standard_ordering:
+            result = []
+            for order in ordering:
+                if order == '?':
+                    result.append(order)
+                elif order.startswith('-'):
+                    result.append(order[1:])
+                else:
+                    result.append('-' + order)
+            return result
+        return ordering
+
     @property
     def limits(self):
         high_mark = 301
-        if self.querydata.high_mark is not None:
-            high_mark = self.querydata.high_mark
-        return self.querydata.low_mark, high_mark
+        if self.query.high_mark is not None:
+            high_mark = self.query.high_mark
+        return self.query.low_mark, high_mark
 
     def get_matching_pk(self, pk_filters, gae_filters):
         pk_filters = [key for key in pk_filters if key is not None]
@@ -272,7 +290,7 @@ class QueryBackend(BaseQueryBackend):
         results = [result for result in Get(pk_filters)
                    if result is not None
                        and matches_gae_filters(result, gae_filters)]
-        if self.querydata.get_ordering():
+        if self._get_ordering():
             results.sort(cmp=self.order_pk_filtered)
         low_mark, high_mark = self.limits
         if high_mark < len(results) - 1:
@@ -282,13 +300,16 @@ class QueryBackend(BaseQueryBackend):
         return results
 
     def order_pk_filtered(self, lhs, rhs):
-        # TODO/CLEANUP: In-memory sorting should be moved into QueryData since it's reusable
+        # TODO/CLEANUP: In-memory sorting should be moved into base compiler
+        # since it's reusable
         ordering = []
-        for order in self.querydata.get_ordering():
+        for order in self._get_ordering():
             if order == '?':
                 raise TypeError("Randomized ordering isn't supported by App Engine")
+            if LOOKUP_SEP in order:
+                raise TypeError("Ordering can't span tables on App Engine (%s)" % order)
             column = order.lstrip('-')
-            if column in (self.querydata.get_meta().pk.column, 'pk'):
+            if column in (self.query.get_meta().pk.column, 'pk'):
                 result = cmp(lhs.key().to_path(), rhs.key().to_path())
             else:
                 result = cmp(lhs.get(column), rhs.get(column))
@@ -316,19 +337,19 @@ class QueryBackend(BaseQueryBackend):
 #        elif isinstance(value, IM):
         # for now we do not support KeyFields thus a Key has to be the own
         # primary key
-        elif isinstance(value, Key) and data_type == 'integer':
+        elif isinstance(value, Key) and db_type == 'integer':
             if value.id() == None:
                 raise TypeError('Wrong type for Key. Excepted integer found' \
                     'None or string')
             else:
                 value = value.id()
-        elif isinstance(value, Key) and data_type == 'text':
+        elif isinstance(value, Key) and db_type == 'text':
             if value.name() == None:
                 raise TypeError('Wrong type for Key. Excepted string found' \
                     'None or id')
             else:
                 value = value.name()
-        elif isinstance(value, Key) and data_type == 'longtext':
+        elif isinstance(value, Key) and db_type == 'longtext':
             raise TypeError("Long text fields cannot be keys on GAE")
 #        TODO: Use long in order to simulate decimal?
 #        elif isinstance(value, long):
@@ -374,6 +395,54 @@ class QueryBackend(BaseQueryBackend):
             value = to_datetime(value)
         return value
 
+class SQLInsertCompiler(SQLCompiler):
+    def execute_sql(self, return_id=False):
+        kwds = {}
+        data = {}
+        for (field, value), column in zip(self.query.values, self.query.columns):
+            if field is not None:
+                if not field.null and value is None:
+                    raise ValueError("You can't set %s (a non-nullable field) "
+                                     "to None!" % field.name)
+                value = self.convert_value_for_db(field.db_type(), value)
+            if column == self.query.get_meta().pk.name:
+                if isinstance(value, basestring):
+                    kwds['name'] = value
+                else:
+                    kwds['id'] = value
+            else:
+                data[column] = value
+        entity = Entity(self.query.get_meta().db_table, **kwds)
+        entity.update(data)
+        key = Put(entity)
+        return key.id_or_name()
+
+class SQLUpdateCompiler(SQLCompiler):
+    def execute_sql(self, result_type=MULTI):
+        # TODO: Implement me
+        print 'NO UPDATE'
+        pass
+
+class SQLDeleteCompiler(SQLCompiler):
+    def execute_sql(self, result_type=MULTI):
+        query, pk_filters, gae_filters = self.build_query()
+        assert not query, 'Deletion queries must only consist of pk filters!'
+        if pk_filters:
+            Delete([key for key in pk_filters if key is not None])
+
+def get_children(children):
+    # Filter out nodes that were automatically added by sql.Query
+    result = []
+    for child in children:
+        if isinstance(child, Node) and child.negated and \
+                len(child.children) == 1 and \
+                isinstance(child.children[0], tuple):
+            node, lookup_type, annotation, value = child.children[0]
+            if lookup_type == 'isnull' and value == True and node.field is None:
+                continue
+        result.append(child)
+    return result
+
 def to_datetime(value):
     """Convert a time or date to a datetime for datastore storage.
 
@@ -407,7 +476,8 @@ def create_key(db_table, value):
         return None
     return Key.from_path(db_table, value)
 
-# TODO/CLEANUP: Filter emulation should become part of QueryData because it's backend independent
+# TODO/CLEANUP: Filter emulation should become part of the base compiler
+# because it's backend independent
 EMULATED_OPS = {
     '=': lambda x, y: x == y,
     'in': lambda x, y: x in y,

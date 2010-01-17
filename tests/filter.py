@@ -203,9 +203,10 @@ class FilterTest(TestCase):
 
         # test multiple filters exception when filtered and not ordered against
         # the first filter
-        self.assertRaises(BadArgumentError, FieldsWithOptionsModel.objects.filter(
+        self.assertRaises(BadArgumentError, lambda:
+            FieldsWithOptionsModel.objects.filter(
                 email__gte='rinnengan@sage.de').filter(floating_point=5.3).order_by(
-                'floating_point').count)
+                'floating_point')[0])
 
         # test exception if filtered across multiple columns with inequality filter
         self.assertRaises(BadFilterError, FieldsWithOptionsModel.objects.filter(
@@ -218,11 +219,12 @@ class FilterTest(TestCase):
                             email__lte='rinnengan@sage.de').exclude(
                             floating_point__lt=9.1).order_by('email').get)
 
-        self.assertRaises(BadArgumentError, FieldsWithOptionsModel.objects.all().exclude(
-                            floating_point__lt=9.1).order_by('email').count)
+        self.assertRaises(BadArgumentError, lambda:
+            FieldsWithOptionsModel.objects.all().exclude(
+                floating_point__lt=9.1).order_by('email')[0])
 
         # test exception on inequality filter.
-        # TODO: support them for appengine via <>
+        # TODO: support them for App Engine
         self.assertRaises(TypeError, FieldsWithOptionsModel.objects.exclude(
                             floating_point=9.1).order_by('floating_point').get)
 

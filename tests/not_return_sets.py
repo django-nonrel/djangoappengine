@@ -66,25 +66,25 @@ class NonReturnSetsTest(TestCase):
             'itachi@uchia.com', 'rasengan@naruto.com', ]).delete()
         self.assertEquals(FieldsWithOptionsModel.objects.count(), 2)
 
-    def test_foreignKey_fetch(self):
+    def test_foreign_key_fetch(self):
         # test fetching the ForeignKey
         ordered_instance = OrderedModel.objects.get(priority=2)
         self.assertEquals(FieldsWithOptionsModel.objects.get(integer=9).foreign_key,
                             ordered_instance)
 
-    def test_foreignKey_backward(self):
+    def test_foreign_key_backward(self):
         entity = OrderedModel.objects.all()[0]
         self.assertEquals(entity.keys.count(), 1)
         # TODO: add should save the added instance transactional via for example
         # force_insert
-        new_foreignKey = FieldsWithOptionsModel(floating_point=5.6, integer=3,
+        new_foreign_key = FieldsWithOptionsModel(floating_point=5.6, integer=3,
             email='temp@temp.com', time=datetime.datetime.now())
-        entity.keys.add(new_foreignKey)
+        entity.keys.add(new_foreign_key)
         self.assertEquals(entity.keys.count(), 2)
         # TODO: add test for create
-        entity.keys.remove(new_foreignKey)
+        entity.keys.remove(new_foreign_key)
         self.assertEquals(entity.keys.count(), 1)
         entity.keys.clear()
         self.assertTrue(not entity.keys.exists())
-        entity.keys = [new_foreignKey, new_foreignKey]
+        entity.keys = [new_foreign_key, new_foreign_key]
         self.assertEquals(entity.keys.count(), 1)
