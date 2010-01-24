@@ -114,8 +114,8 @@ class FakeCursor(object):
         raise TypeError("The App Engine backend doesn't support cursors.")
 
 class DatabaseWrapper(BaseDatabaseWrapper):
-    def __init__(self, * args, ** kwds):
-        super(DatabaseWrapper, self).__init__(*args, ** kwds)
+    def __init__(self, *args, **kwds):
+        super(DatabaseWrapper, self).__init__(*args, **kwds)
         self.features = DatabaseFeatures()
         self.ops = DatabaseOperations()
         self.client = DatabaseClient(self)

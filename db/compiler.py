@@ -1,11 +1,8 @@
+from .basecompiler import NonrelCompiler
 import datetime
 from django.conf import settings
-from django.core import exceptions
-# TODO: Use a separate base compiler class?
 from django.db.models.sql import aggregates as sqlaggregates
-from django.db.models.sql.compiler import SQLCompiler as BaseSQLCompiler
 from django.db.models.sql.constants import LOOKUP_SEP, MULTI, SINGLE
-from django.db.models.sql.datastructures import Empty
 from django.db.models.sql.where import AND, OR
 from django.utils.tree import Node
 from google.appengine.api.datastore import Entity, Query, Put, Get, Delete, Key
@@ -20,11 +17,13 @@ OPERATORS_MAP = {
     'gte': '>=',
     'lt': '<',
     'lte': '<=',
-    'isnull': None,
 
     # The following operators are supported with special code below:
+    'isnull': None,
+    'startswith': None,
+
     # TODO: support these filters
-    # in, range, startswith
+    # in, range
 }
 
 NEGATION_MAP = {
@@ -36,12 +35,10 @@ NEGATION_MAP = {
     #'exact': '!=', # this might actually become individual '<' and '>' queries
 }
 
-class SQLCompiler(BaseSQLCompiler):
+class SQLCompiler(NonrelCompiler):
     """
     A simple App Engine query: no joins, no distinct, etc.
     """
-    operators_map = OPERATORS_MAP
-    negation_map = NEGATION_MAP
 
     # ----------------------------------------------
     # Public API
@@ -68,10 +65,10 @@ class SQLCompiler(BaseSQLCompiler):
         """
         Returns an iterator over the results from executing this query.
         """
-        query, pk_filters, gae_filters = self.build_query()
+        query, pk_filters = self.build_query()
 
         if pk_filters:
-            results = self.get_matching_pk(pk_filters, gae_filters)
+            results = self.get_matching_pk(pk_filters)
         else:
             low_mark, high_mark = self.limits
             results = query.Get(high_mark - low_mark, low_mark)
@@ -100,10 +97,10 @@ class SQLCompiler(BaseSQLCompiler):
         """
         Counts matches using the current filter constraints.
         """
-        query, pk_filters, gae_filters = self.build_query()
+        query, pk_filters = self.build_query()
 
         if pk_filters:
-            return len(self.get_matching_pk(pk_filters, gae_filters))
+            return len(self.get_matching_pk(pk_filters))
 
         if check_exists:
             high_mark = 1
@@ -114,12 +111,10 @@ class SQLCompiler(BaseSQLCompiler):
 
     def build_query(self):
         query = Query(self.query.get_meta().db_table)
-        # TODO/CLEANUP: The negation handling code could be moved into a separate base class
-        # since it's reusable between non-relational backends.
         self.negated = False
         self.inequality_field = None
 
-        pk_filters, gae_filters = self._add_filters_to_query(query, self.query.where)
+        pk_filters = self._add_filters_to_query(query, self.query.where)
 
         del self.negated
         del self.inequality_field
@@ -144,10 +139,10 @@ class SQLCompiler(BaseSQLCompiler):
         # This at least satisfies the most basic unit tests
         if settings.DEBUG:
             self.connection.queries.append({'sql': '%r ORDER %r' % (query, ordering)})
-        return query, pk_filters, gae_filters
+        return query, pk_filters
 
     def _add_filters_to_query(self, query, filters):
-        pk_filters, gae_filters = [], []
+        pk_filters = []
         if filters.negated:
             self.negated = not self.negated
 
@@ -166,15 +161,13 @@ class SQLCompiler(BaseSQLCompiler):
 
         for child in children:
             if isinstance(child, Node):
-                sub_pk_filters, sub_gae_filters = self._add_filters_to_query(
-                    query, child)
+                sub_pk_filters = self._add_filters_to_query(query, child)
                 if sub_pk_filters:
                     if pk_filters:
                         raise TypeError("You can't apply multiple AND filters "
                                         "on the primary key. "
                                         "Did you mean __in=[...]?")
                     pk_filters = sub_pk_filters
-                gae_filters.extend(sub_gae_filters)
                 continue
 
             constraint, lookup_type, annotation, value = child
@@ -207,6 +200,7 @@ class SQLCompiler(BaseSQLCompiler):
             if is_primary_key:
                 column = '__key__'
                 if lookup_type in ('exact', 'in'):
+                    # Optimization: batch-get by key
                     if self.negated:
                         raise TypeError("You can't negate equality lookups on "
                                         "the primary key.")
@@ -225,7 +219,7 @@ class SQLCompiler(BaseSQLCompiler):
                                         " a string or an integer.")
                     value = create_key(db_table, value)
 
-            if lookup_type not in self.operators_map:
+            if lookup_type not in OPERATORS_MAP:
                 raise TypeError("Lookup type %r isn't supported" % lookup_type)
 
             if lookup_type == 'isnull':
@@ -237,43 +231,34 @@ class SQLCompiler(BaseSQLCompiler):
                 value = None
             elif self.negated:
                 try:
-                    op = self.negation_map[lookup_type]
+                    op = NEGATION_MAP[lookup_type]
                 except KeyError:
                     raise TypeError("Lookup type %r can't be negated" % lookup_type)
                 if self.inequality_field and column != self.inequality_field:
                     raise TypeError("Can't have inequality filters on multiple "
                         "columns (here: %r and %r)" % (self.inequality_field, column))
                 self.inequality_field = column
+            elif lookup_type == 'startswith':
+                if not isinstance(value, unicode):
+                    value = value.decode('utf8')
+                op = '>='
+                query["%s %s" % (column, op)] = self.convert_value_for_db(
+                    db_type, value)
+                op = '<='
+                value += u'\ufffd'
+                query["%s %s" % (column, op)] = self.convert_value_for_db(
+                    db_type, value)
+                continue
             else:
-                op = self.operators_map[lookup_type]
+                op = OPERATORS_MAP[lookup_type]
 
-            gae_filters.append((column, op, value))
             query["%s %s" % (column, op)] = self.convert_value_for_db(db_type,
                 value)
 
         if filters.negated:
             self.negated = not self.negated
 
-        return pk_filters, gae_filters
-
-    def _get_ordering(self):
-        # TODO: This should be reusable and also support JOINs
-        if not self.query.default_ordering:
-            ordering = self.query.order_by
-        else:
-            ordering = self.query.order_by or self.query.get_meta().ordering
-        ordering = [order.lstrip('+') for order in ordering]
-        if not self.query.standard_ordering:
-            result = []
-            for order in ordering:
-                if order == '?':
-                    result.append(order)
-                elif order.startswith('-'):
-                    result.append(order[1:])
-                else:
-                    result.append('-' + order)
-            return result
-        return ordering
+        return pk_filters
 
     @property
     def limits(self):
@@ -282,14 +267,14 @@ class SQLCompiler(BaseSQLCompiler):
             high_mark = self.query.high_mark
         return self.query.low_mark, high_mark
 
-    def get_matching_pk(self, pk_filters, gae_filters):
+    def get_matching_pk(self, pk_filters):
         pk_filters = [key for key in pk_filters if key is not None]
         if not pk_filters:
             return []
 
         results = [result for result in Get(pk_filters)
                    if result is not None
-                       and matches_gae_filters(result, gae_filters)]
+                       and self.matches_filters(result)]
         if self._get_ordering():
             results.sort(cmp=self.order_pk_filtered)
         low_mark, high_mark = self.limits
@@ -300,24 +285,19 @@ class SQLCompiler(BaseSQLCompiler):
         return results
 
     def order_pk_filtered(self, lhs, rhs):
-        # TODO/CLEANUP: In-memory sorting should be moved into base compiler
-        # since it's reusable
-        ordering = []
-        for order in self._get_ordering():
-            if order == '?':
-                raise TypeError("Randomized ordering isn't supported by App Engine")
-            if LOOKUP_SEP in order:
-                raise TypeError("Ordering can't span tables on App Engine (%s)" % order)
-            column = order.lstrip('-')
-            if column in (self.query.get_meta().pk.column, 'pk'):
-                result = cmp(lhs.key().to_path(), rhs.key().to_path())
-            else:
-                result = cmp(lhs.get(column), rhs.get(column))
-            if order.startswith('-'):
-                result *= -1
-            if result != 0:
-                return result
-        return 0
+        left = dict(lhs)
+        left[self.query.get_meta().pk.column] = lhs.key().to_path()
+        right = dict(rhs)
+        right[self.query.get_meta().pk.column] = rhs.key().to_path()
+        return self._order_in_memory(left, right)
+
+    def matches_filters(self, entity):
+        item = dict(entity)
+        pk = self.query.get_meta().pk
+        value = self.convert_value_from_db(pk.db_type(), entity.key())
+        item[pk.column] = value
+        result = self._matches_filters(item, self.query.where)
+        return result
 
     def convert_value_from_db(self, db_type, value):
         # the following GAE database types are all unicode subclasses, cast them
@@ -425,13 +405,14 @@ class SQLUpdateCompiler(SQLCompiler):
 
 class SQLDeleteCompiler(SQLCompiler):
     def execute_sql(self, result_type=MULTI):
-        query, pk_filters, gae_filters = self.build_query()
+        query, pk_filters = self.build_query()
         assert not query, 'Deletion queries must only consist of pk filters!'
         if pk_filters:
             Delete([key for key in pk_filters if key is not None])
 
 def get_children(children):
-    # Filter out nodes that were automatically added by sql.Query
+    # Filter out nodes that were automatically added by sql.Query, but are
+    # not necessary with our negation handling code
     result = []
     for child in children:
         if isinstance(child, Node) and child.negated and \
@@ -475,22 +456,3 @@ def create_key(db_table, value):
     if isinstance(value, (int, long)) and value < 1:
         return None
     return Key.from_path(db_table, value)
-
-# TODO/CLEANUP: Filter emulation should become part of the base compiler
-# because it's backend independent
-EMULATED_OPS = {
-    '=': lambda x, y: x == y,
-    'in': lambda x, y: x in y,
-    '<': lambda x, y: x < y,
-    '<=': lambda x, y: x <= y,
-    '>': lambda x, y: x > y,
-    '>=': lambda x, y: x >= y,
-}
-
-def matches_gae_filters(entity, gae_filters):
-    for column, op, value in gae_filters:
-        if op not in EMULATED_OPS:
-            raise ValueError('Invalid App Engine filter: %s %s' % (filter, value))
-        if not EMULATED_OPS[op](entity[column], value):
-            return False
-    return True
