@@ -91,6 +91,9 @@ class DatabaseOperations(BaseDatabaseOperations):
 #    def value_to_db_decimal(self, value, max_digits, decimal_places):
 #        return
 
+    def prep_for_like_query(self, value):
+        return value
+
     def check_aggregate_support(self, aggregate):
         # TODO: Only COUNT(*) should be supported. Raise NotImplementedError
         pass

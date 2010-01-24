@@ -196,6 +196,9 @@ class SQLCompiler(NonrelCompiler):
                 else:
                     value = value[0]
 
+            if lookup_type == 'startswith':
+                value = value[:-1]
+
             # Emulated/converted lookups
             if is_primary_key:
                 column = '__key__'
@@ -239,13 +242,20 @@ class SQLCompiler(NonrelCompiler):
                         "columns (here: %r and %r)" % (self.inequality_field, column))
                 self.inequality_field = column
             elif lookup_type == 'startswith':
-                if not isinstance(value, unicode):
-                    value = value.decode('utf8')
                 op = '>='
                 query["%s %s" % (column, op)] = self.convert_value_for_db(
                     db_type, value)
                 op = '<='
-                value += u'\ufffd'
+                if isinstance(value, str):
+                    value = value.decode('utf8')
+                if isinstance(value, Key):
+                    value = list(value.to_path())
+                    if isinstance(value[-1], str):
+                        value[-1] = value[-1].decode('utf8')
+                    value[-1] += u'\ufffd'
+                    value = Key.from_path(*value)
+                else:
+                    value += u'\ufffd'
                 query["%s %s" % (column, op)] = self.convert_value_for_db(
                     db_type, value)
                 continue
