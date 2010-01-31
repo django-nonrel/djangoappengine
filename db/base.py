@@ -2,11 +2,7 @@ from .creation import DatabaseCreation
 from ..utils import appid, have_appserver, on_production_server
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseOperations, \
     BaseDatabaseWrapper, BaseDatabaseClient, BaseDatabaseValidation, BaseDatabaseIntrospection
-from google.appengine.ext.db import Error as GAEError
 import logging, os
-
-DatabaseError = GAEError
-IntegrityError = GAEError
 
 def auth_func():
     import getpass

@@ -2,8 +2,7 @@ from .testmodels import FieldsWithOptionsModel, EmailModel, OrderedModel
 import datetime
 from django.test import TestCase
 from django.db.models import Q
-from google.appengine.api.datastore_errors import BadArgumentError, \
-    BadFilterError
+from django.db.utils import DatabaseError
 
 class FilterTest(TestCase):
     floats = [5.3, 2.6, 9.1, 1.58]
@@ -214,29 +213,29 @@ class FilterTest(TestCase):
 
         # test multiple filters exception when filtered and not ordered against
         # the first filter
-        self.assertRaises(BadArgumentError, lambda:
+        self.assertRaises(DatabaseError, lambda:
             FieldsWithOptionsModel.objects.filter(
                 email__gte='rinnengan@sage.de').filter(floating_point=5.3).order_by(
                 'floating_point')[0])
 
         # test exception if filtered across multiple columns with inequality filter
-        self.assertRaises(BadFilterError, FieldsWithOptionsModel.objects.filter(
+        self.assertRaises(DatabaseError, FieldsWithOptionsModel.objects.filter(
                           floating_point__lte=5.3).filter(integer__gte=2).order_by(
                           'floating_point').get)
 
         # test exception if filtered across multiple columns with inequality filter
         # with exclude
-        self.assertRaises(BadFilterError, FieldsWithOptionsModel.objects.filter(
+        self.assertRaises(DatabaseError, FieldsWithOptionsModel.objects.filter(
                             email__lte='rinnengan@sage.de').exclude(
                             floating_point__lt=9.1).order_by('email').get)
 
-        self.assertRaises(BadArgumentError, lambda:
+        self.assertRaises(DatabaseError, lambda:
             FieldsWithOptionsModel.objects.all().exclude(
                 floating_point__lt=9.1).order_by('email')[0])
 
         # test exception on inequality filter.
         # TODO: support them for App Engine
-        self.assertRaises(TypeError, FieldsWithOptionsModel.objects.exclude(
+        self.assertRaises(DatabaseError, FieldsWithOptionsModel.objects.exclude(
                             floating_point=9.1).order_by('floating_point').get)
 
         # TODO: Maybe check all possible exceptions

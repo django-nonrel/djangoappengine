@@ -4,11 +4,13 @@ from django.conf import settings
 from django.db.models.sql import aggregates as sqlaggregates
 from django.db.models.sql.constants import LOOKUP_SEP, MULTI, SINGLE
 from django.db.models.sql.where import AND, OR
+from django.db.utils import DatabaseError, IntegrityError
 from django.utils.tree import Node
 from google.appengine.api.datastore import Entity, Query, Put, Get, Delete, Key
 from google.appengine.api.datastore_types import Text, Category, Email, Link, \
     PhoneNumber, PostalAddress, Text, Blob, ByteString, GeoPt, IM, Key, \
     Rating, BlobKey
+import sys
 
 # Valid query types (a dictionary is used for speedy lookups).
 OPERATORS_MAP = {
@@ -54,24 +56,30 @@ class SQLCompiler(NonrelCompiler):
             aggregate = aggregates[0]
             assert isinstance(aggregate, sqlaggregates.Count)
             assert aggregate.col == '*'
-            count = self.get_count()
+            try:
+                count = self.get_count()
+            except Exception, e: 
+                raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
             if result_type is SINGLE:
                 return [count]
             elif result_type is MULTI:
                 return [[count]]
-        raise NotImplementedError()
+        raise NotImplementedError('The App Engine backend only supports count() queries')
 
     def results_iter(self):
         """
         Returns an iterator over the results from executing this query.
         """
-        query, pk_filters = self.build_query()
+        try:
+            query, pk_filters = self.build_query()
 
-        if pk_filters:
-            results = self.get_matching_pk(pk_filters)
-        else:
-            low_mark, high_mark = self.limits
-            results = query.Get(high_mark - low_mark, low_mark)
+            if pk_filters:
+                results = self.get_matching_pk(pk_filters)
+            else:
+                low_mark, high_mark = self.limits
+                results = query.Get(high_mark - low_mark, low_mark)
+        except Exception, e: 
+            raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
 
         for entity in results:
             # TODO: GAE: support parents via GAEKeyField
@@ -124,9 +132,9 @@ class SQLCompiler(NonrelCompiler):
         ordering = []
         for order in self._get_ordering():
             if order == '?':
-                raise TypeError("Randomized ordering isn't supported on App Engine")
+                raise Error("Randomized ordering isn't supported on App Engine")
             if LOOKUP_SEP in order:
-                raise TypeError("Ordering can't span tables on App Engine (%s)" % order)
+                raise DatabaseError("Ordering can't span tables on App Engine (%s)" % order)
             if order.startswith('-'):
                 order, direction = order[1:], Query.DESCENDING
             else:
@@ -147,13 +155,13 @@ class SQLCompiler(NonrelCompiler):
             self.negated = not self.negated
 
         if not self.negated and filters.connector != AND:
-            raise TypeError("Only AND filters are supported")
+            raise DatabaseError("Only AND filters are supported")
 
         # Remove unneeded children from tree
         children = get_children(filters.children)
 
         if self.negated and filters.connector != OR and len(children) > 1:
-            raise TypeError("When negating a whole filter subgroup (e.g., a Q "
+            raise DatabaseError("When negating a whole filter subgroup (e.g., a Q "
                             "object) the subgroup filters must be connected "
                             "via OR, so the App Engine backend can convert "
                             "them like this: "
@@ -164,7 +172,7 @@ class SQLCompiler(NonrelCompiler):
                 sub_pk_filters = self._add_filters_to_query(query, child)
                 if sub_pk_filters:
                     if pk_filters:
-                        raise TypeError("You can't apply multiple AND filters "
+                        raise DatabaseError("You can't apply multiple AND filters "
                                         "on the primary key. "
                                         "Did you mean __in=[...]?")
                     pk_filters = sub_pk_filters
@@ -181,13 +189,13 @@ class SQLCompiler(NonrelCompiler):
             db_table = self.query.get_meta().db_table
 
             if joins:
-                raise TypeError("Joins aren't supported")
+                raise DatabaseError("Joins aren't supported")
 
             # Django fields always return a list (see Field.get_db_prep_lookup)
             # except if get_db_prep_lookup got overridden by a subclass
             if lookup_type != 'in' and isinstance(value, (tuple, list)):
                 if len(value) > 1:
-                    raise TypeError('Filter lookup type was: %s. Expected the '
+                    raise DatabaseError('Filter lookup type was: %s. Expected the '
                                     'filters value not to be a list. Only "in"-filters '
                                     'can be used with lists.'
                                     % lookup_type)
@@ -205,7 +213,7 @@ class SQLCompiler(NonrelCompiler):
                 if lookup_type in ('exact', 'in'):
                     # Optimization: batch-get by key
                     if self.negated:
-                        raise TypeError("You can't negate equality lookups on "
+                        raise DatabaseError("You can't negate equality lookups on "
                                         "the primary key.")
                     if not isinstance(value, (tuple, list)):
                         value = [value]
@@ -218,12 +226,12 @@ class SQLCompiler(NonrelCompiler):
                     # unicode (see convert_value_for_db)
                     db_type = 'gae_key'
                     if not isinstance(value, (basestring, int, long)):
-                        raise TypeError("Lookup values on primary keys have to be"
+                        raise DatabaseError("Lookup values on primary keys have to be"
                                         " a string or an integer.")
                     value = create_key(db_table, value)
 
             if lookup_type not in OPERATORS_MAP:
-                raise TypeError("Lookup type %r isn't supported" % lookup_type)
+                raise DatabaseError("Lookup type %r isn't supported" % lookup_type)
 
             if lookup_type == 'isnull':
                 if (self.negated and value) or not value:
@@ -236,9 +244,9 @@ class SQLCompiler(NonrelCompiler):
                 try:
                     op = NEGATION_MAP[lookup_type]
                 except KeyError:
-                    raise TypeError("Lookup type %r can't be negated" % lookup_type)
+                    raise DatabaseError("Lookup type %r can't be negated" % lookup_type)
                 if self.inequality_field and column != self.inequality_field:
-                    raise TypeError("Can't have inequality filters on multiple "
+                    raise DatabaseError("Can't have inequality filters on multiple "
                         "columns (here: %r and %r)" % (self.inequality_field, column))
                 self.inequality_field = column
             elif lookup_type == 'startswith':
@@ -329,18 +337,18 @@ class SQLCompiler(NonrelCompiler):
         # primary key
         elif isinstance(value, Key) and db_type == 'integer':
             if value.id() == None:
-                raise TypeError('Wrong type for Key. Excepted integer found' \
+                raise DatabaseError('Wrong type for Key. Excepted integer found' \
                     'None or string')
             else:
                 value = value.id()
         elif isinstance(value, Key) and db_type == 'text':
             if value.name() == None:
-                raise TypeError('Wrong type for Key. Excepted string found' \
+                raise DatabaseError('Wrong type for Key. Excepted string found' \
                     'None or id')
             else:
                 value = value.name()
         elif isinstance(value, Key) and db_type == 'longtext':
-            raise TypeError("Long text fields cannot be keys on GAE")
+            raise DatabaseError("Long text fields cannot be keys on GAE")
 #        TODO: Use long in order to simulate decimal?
 #        elif isinstance(value, long):
 #        elif isinstance(value, Rating):
@@ -402,10 +410,14 @@ class SQLInsertCompiler(SQLCompiler):
                     kwds['id'] = value
             else:
                 data[column] = value
-        entity = Entity(self.query.get_meta().db_table, **kwds)
-        entity.update(data)
-        key = Put(entity)
-        return key.id_or_name()
+
+        try:
+            entity = Entity(self.query.get_meta().db_table, **kwds)
+            entity.update(data)
+            key = Put(entity)
+            return key.id_or_name()
+        except Exception, e: 
+            raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
 
 class SQLUpdateCompiler(SQLCompiler):
     def execute_sql(self, result_type=MULTI):
@@ -415,10 +427,13 @@ class SQLUpdateCompiler(SQLCompiler):
 
 class SQLDeleteCompiler(SQLCompiler):
     def execute_sql(self, result_type=MULTI):
-        query, pk_filters = self.build_query()
-        assert not query, 'Deletion queries must only consist of pk filters!'
-        if pk_filters:
-            Delete([key for key in pk_filters if key is not None])
+        try:
+            query, pk_filters = self.build_query()
+            assert not query, 'Deletion queries must only consist of pk filters!'
+            if pk_filters:
+                Delete([key for key in pk_filters if key is not None])
+        except Exception, e: 
+            raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
 
 def get_children(children):
     # Filter out nodes that were automatically added by sql.Query, but are
