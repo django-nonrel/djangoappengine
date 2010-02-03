@@ -1,5 +1,8 @@
 from django.db import models
 
+class EmailModel(models.Model):
+    email = models.EmailField()
+
 class FieldsWithoutOptionsModel(models.Model):
     datetime = models.DateTimeField()
     date = models.DateField()

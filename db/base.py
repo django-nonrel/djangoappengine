@@ -2,11 +2,7 @@ from .creation import DatabaseCreation
 from ..utils import appid, have_appserver, on_production_server
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseOperations, \
     BaseDatabaseWrapper, BaseDatabaseClient, BaseDatabaseValidation, BaseDatabaseIntrospection
-from google.appengine.ext.db import Error as GAEError
 import logging, os
-
-DatabaseError = GAEError
-IntegrityError = GAEError
 
 def auth_func():
     import getpass
@@ -91,6 +87,9 @@ class DatabaseOperations(BaseDatabaseOperations):
 #    def value_to_db_decimal(self, value, max_digits, decimal_places):
 #        return
 
+    def prep_for_like_query(self, value):
+        return value
+
     def check_aggregate_support(self, aggregate):
         # TODO: Only COUNT(*) should be supported. Raise NotImplementedError
         pass
@@ -114,8 +113,8 @@ class FakeCursor(object):
         raise TypeError("The App Engine backend doesn't support cursors.")
 
 class DatabaseWrapper(BaseDatabaseWrapper):
-    def __init__(self, * args, ** kwds):
-        super(DatabaseWrapper, self).__init__(*args, ** kwds)
+    def __init__(self, *args, **kwds):
+        super(DatabaseWrapper, self).__init__(*args, **kwds)
         self.features = DatabaseFeatures()
         self.ops = DatabaseOperations()
         self.client = DatabaseClient(self)
