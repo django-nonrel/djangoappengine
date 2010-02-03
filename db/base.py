@@ -121,12 +121,12 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         self.creation = DatabaseCreation(self)
         self.validation = DatabaseValidation(self)
         self.introspection = DatabaseIntrospection(self)
-        options = self.settings_dict['OPTIONS']
+        options = self.settings_dict
         self.use_test_datastore = options.get('use_test_datastore', False)
         self.test_datastore_inmemory = options.get('test_datastore_inmemory', True)
-        self.use_remote = options.get('use_remote', False)
+        self.remote = options.get('remote', False)
         if on_production_server:
-            self.use_remote = False
+            self.remote = False
         self.remote_app_id = options.get('remote_id', appid)
         self.remote_host = options.get('remote_host', '%s.appspot.com' % self.remote_app_id)
         self.remote_url = options.get('remote_url', '/remote_api')
@@ -148,12 +148,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             from google.appengine.tools import dev_appserver
             dev_appserver.SetupStubs(appid, **args)
         # If we're supposed to set up the remote_api, do that now.
-        if not self.use_test_datastore: # Never when testing
-            if self.use_remote:
-                self.setup_remote()
+        if self.remote:
+            self.setup_remote()
 
     def setup_remote(self):
-        self.use_remote = True
+        self.remote = True
         logging.info('Setting up remote_api for "%s" at http://%s%s' %
                      (self.remote_app_id, self.remote_host, self.remote_url)
                      )
@@ -167,7 +166,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
     def flush(self):
         """Helper function to remove the current datastore and re-open the stubs"""
-        if self.use_remote:
+        if self.remote:
             import random, string
             code = ''.join([random.choice(string.ascii_letters) for x in range(4)])
             print '\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
@@ -185,9 +184,9 @@ class DatabaseWrapper(BaseDatabaseWrapper):
                 from django.db import models
                 from google.appengine.api import datastore as ds
                 for model in models.get_models():
-                    print 'Deleting %s...' % model.kind()
+                    print 'Deleting %s...' % model._meta.db_table
                     while True:
-                        data = ds.Query(model.kind(), keys_only=True).Get(200)
+                        data = ds.Query(model._meta.db_table, keys_only=True).Get(200)
                         if not data:
                             break
                         ds.Delete(data)
