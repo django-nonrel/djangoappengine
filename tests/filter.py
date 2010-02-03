@@ -1,5 +1,5 @@
 from .testmodels import FieldsWithOptionsModel, EmailModel, OrderedModel
-import datetime
+import datetime, time
 from django.test import TestCase
 from django.db.models import Q
 from django.db.utils import DatabaseError
@@ -12,6 +12,8 @@ class FilterTest(TestCase):
     def setUp(self):
         for index, (float, email) in enumerate(zip(FilterTest.floats,
                 FilterTest.emails)):
+            # ensure distinct times when saving entities
+            time.sleep(0.01)
             self.last_save_time = datetime.datetime.now().time()
             ordered_instance = OrderedModel(priority=index, pk=index + 1)
             ordered_instance.save()
