@@ -312,7 +312,8 @@ class SQLCompiler(NonrelCompiler):
     def matches_filters(self, entity):
         item = dict(entity)
         pk = self.query.get_meta().pk
-        value = self.convert_value_from_db(pk.db_type(), entity.key())
+        value = self.convert_value_from_db(pk.db_type(connection=self.connection),
+            entity.key())
         item[pk.column] = value
         result = self._matches_filters(item, self.query.where)
         return result
@@ -411,7 +412,8 @@ class SQLInsertCompiler(SQLCompiler):
                 if not field.null and value is None:
                     raise ValueError("You can't set %s (a non-nullable field) "
                                      "to None!" % field.name)
-                value = self.convert_value_for_db(field.db_type(), value)
+                value = self.convert_value_for_db(field.db_type(connection=self.connection),
+                    value)
             if column == self.query.get_meta().pk.name:
                 if isinstance(value, basestring):
                     kwds['name'] = value
