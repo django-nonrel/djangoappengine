@@ -17,7 +17,7 @@ DATABASES = {
     },
 }
 
-EMAIL_BACKEND = 'djangoappengine.email.AsyncEmailBackend'
+EMAIL_BACKEND = 'djangoappengine.mail.AsyncEmailBackend'
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
 FILE_UPLOAD_HANDLERS = (
