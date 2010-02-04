@@ -217,7 +217,7 @@ class SQLCompiler(NonrelCompiler):
                                         "the primary key.")
                     if not isinstance(value, (tuple, list)):
                         value = [value]
-                    pk_filters = [create_key(db_table, pk) for pk in value]
+                    pk_filters = [create_key(db_table, pk) for pk in value if pk]
                     continue
                 else:
                     # XXX: set db_type to 'gae_key' in order to allow

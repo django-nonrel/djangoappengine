@@ -21,6 +21,13 @@ import django.core.handlers.wsgi
 from google.appengine.ext.webapp import util
 from django.conf import settings
 
+def log_traceback(*args, **kwargs):
+    import logging
+    logging.exception('Exception in request:')
+
+from django.core import signals
+signals.got_request_exception.connect(log_traceback)
+
 def real_main():
     # Reset path and environment variables
     global path_backup
