@@ -188,27 +188,27 @@ class FilterTest(TestCase):
     def test_chained_filter(self):
         # additionally tests count :)
         self.assertEquals(FieldsWithOptionsModel.objects.filter(
-                          floating_point__lt=5.3).filter(floating_point__gt=2.6).
+                          floating_point__lt=5.3, floating_point__gt=2.6).
                           count(), 0)
 
         # test across multiple columns. On app engine only one filter is allowed
         # to be an inequality filter
         self.assertEquals([(entity.floating_point, entity.integer) for entity in
                           FieldsWithOptionsModel.objects.filter(
-                          floating_point__lte=5.3).filter(integer=2).order_by(
+                          floating_point__lte=5.3, integer=2).order_by(
                           'floating_point')], [(2.6, 2), ])
 
         # test multiple filters including the primary_key field
         self.assertEquals([entity.email for entity in
                           FieldsWithOptionsModel.objects.filter(
-                          email__gte='rinnengan@sage.de').filter(integer=2).order_by(
+                          email__gte='rinnengan@sage.de', integer=2).order_by(
                           'email')], ['sharingan@uchias.com', ])
 
         # test in filter on primary key with another arbitrary filter
         self.assertEquals([entity.email for entity in
                           FieldsWithOptionsModel.objects.filter(
                           email__in=['rinnengan@sage.de',
-                          'sharingan@uchias.com']).filter(integer__gt=2).order_by(
+                          'sharingan@uchias.com'], integer__gt=2).order_by(
                           'integer')], ['rinnengan@sage.de', ])
 
         # Test exceptions
@@ -217,12 +217,12 @@ class FilterTest(TestCase):
         # the first filter
         self.assertRaises(DatabaseError, lambda:
             FieldsWithOptionsModel.objects.filter(
-                email__gte='rinnengan@sage.de').filter(floating_point=5.3).order_by(
+                email__gte='rinnengan@sage.de', floating_point=5.3).order_by(
                 'floating_point')[0])
 
         # test exception if filtered across multiple columns with inequality filter
         self.assertRaises(DatabaseError, FieldsWithOptionsModel.objects.filter(
-                          floating_point__lte=5.3).filter(integer__gte=2).order_by(
+                          floating_point__lte=5.3, integer__gte=2).order_by(
                           'floating_point').get)
 
         # test exception if filtered across multiple columns with inequality filter
