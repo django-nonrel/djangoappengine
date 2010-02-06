@@ -77,7 +77,10 @@ class SQLCompiler(NonrelCompiler):
                 results = self.get_matching_pk(pk_filters)
             else:
                 low_mark, high_mark = self.limits
-                results = query.Get(high_mark - low_mark, low_mark)
+                if high_mark > low_mark:
+                    results = query.Get(high_mark - low_mark, low_mark)
+                else:
+                    results = ()
         except Exception, e: 
             raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
 
@@ -89,10 +92,10 @@ class SQLCompiler(NonrelCompiler):
             result = []
             for field in self.query.get_meta().local_fields:
                 if not field.null and entity.get(field.column,
-                        field.default) is None:
+                        field.get_default()) is None:
                     raise ValueError("Non-nullable field %s can't be None!" % field.name)
                 result.append(self.convert_value_from_db(field.db_type(
-                    connection=self.connection), entity.get(field.column, field.default)))
+                    connection=self.connection), entity.get(field.column, field.get_default())))
             yield result
 
     def has_results(self):

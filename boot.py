@@ -11,7 +11,9 @@ else:
     MAIN_DIRS = (PROJECT_DIR,)
 
 # Overrides for os.environ
-env_ext = {'DJANGO_SETTINGS_MODULE': 'settings'}
+env_ext = {}
+if 'DJANGO_SETTINGS_MODULE' not in os.environ:
+    env_ext['DJANGO_SETTINGS_MODULE'] = 'settings'
 
 def setup_env():
     """Configures app engine environment for command-line apps."""

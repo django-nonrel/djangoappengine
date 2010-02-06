@@ -34,10 +34,8 @@ def run_appcfg(argv):
     # Reset the logging level to WARN as appcfg will spew tons of logs on INFO
     logging.getLogger().setLevel(logging.WARN)
     
-    # Note: if we decide to change the name of this command to something other
-    # than 'update' we will have to munge the args to replace whatever
-    # we called it with 'update'
     new_args = argv[:]
+    new_args[1] = 'update'
     new_args.append('.')
     syncdb = True
     if '--nosyncdb' in new_args:
@@ -59,9 +57,9 @@ def run_appcfg(argv):
               '--------------------------'
 
 class Command(BaseCommand):
-    """Calls the appcfg.py's update command for the current project.
+    """Deploys the website to the production server.
 
-    Any additional arguments are passed directly to appcfg.py.
+    Any additional arguments are passed directly to appcfg.py update
     """
     help = 'Calls appcfg.py update for the current project.'
     args = '[any appcfg.py options]'
