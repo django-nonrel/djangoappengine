@@ -319,7 +319,8 @@ class SQLCompiler(NonrelCompiler):
         return result
 
     def convert_value_from_db(self, db_type, value):
-        if isinstance(value, (list, tuple)) and db_type.startswith('ListField:'):
+        if isinstance(value, (list, tuple)) and len(value) and \
+                db_type.startswith('ListField:'):
             db_sub_type = db_type.split('ListField:')[1]
             for i, val in enumerate(value):
                 value[i] = self.convert_value_from_db(db_sub_type, val)
@@ -372,7 +373,8 @@ class SQLCompiler(NonrelCompiler):
         return value
 
     def convert_value_for_db(self, db_type, value):
-        if isinstance(value, (list, tuple)) and db_type.startswith('ListField:'):
+        if isinstance(value, (list, tuple)) and len(value) and \
+                db_type.startswith('ListField:'):
             db_sub_type = db_type.split('ListField:')[1]
             for i, val in enumerate(value):
                 value[i] = self.convert_value_for_db(db_sub_type, val)
@@ -419,6 +421,10 @@ class SQLInsertCompiler(SQLCompiler):
                     kwds['name'] = value
                 else:
                     kwds['id'] = value
+            # gae does not store emty lists (and even does not allow passing empty
+            # lists to Entity.update) so skip them
+            elif isinstance(value, (tuple, list)) and not len(value):
+                continue
             else:
                 data[column] = value
 
