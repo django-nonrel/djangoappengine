@@ -1,6 +1,7 @@
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.constants import LOOKUP_SEP
 from django.db.models.sql.where import AND, OR
+from django.db.utils import DatabaseError, IntegrityError
 from django.utils.tree import Node
 import random
 
@@ -23,6 +24,41 @@ class NonrelCompiler(SQLCompiler):
     and ordering. Entities are assumed to be dictionaries where the keys are
     column names.
     """
+
+    def _normalize_lookup_value(self, value, annotation, lookup_type):
+        # Django fields always return a list (see Field.get_db_prep_lookup)
+        # except if get_db_prep_lookup got overridden by a subclass
+        if lookup_type != 'in' and isinstance(value, (tuple, list)):
+            if len(value) > 1:
+                raise DatabaseError('Filter lookup type was: %s. Expected the '
+                                'filters value not to be a list. Only "in"-filters '
+                                'can be used with lists.'
+                                % lookup_type)
+            elif lookup_type == 'isnull':
+                value = annotation
+            else:
+                value = value[0]
+
+        if isinstance(value, unicode):
+            value = unicode(value)
+        elif isinstance(value, str):
+            value = str(value)
+
+        return value
+
+    def _get_children(self, children):
+        # Filter out nodes that were automatically added by sql.Query, but are
+        # not necessary with emulated negation handling code
+        result = []
+        for child in children:
+            if isinstance(child, Node) and child.negated and \
+                    len(child.children) == 1 and \
+                    isinstance(child.children[0], tuple):
+                node, lookup_type, annotation, value = child.children[0]
+                if lookup_type == 'isnull' and value == True and node.field is None:
+                    continue
+            result.append(child)
+        return result
 
     def _matches_filters(self, entity, filters):
         # Filters without rules match everything

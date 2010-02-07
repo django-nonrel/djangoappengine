@@ -161,7 +161,7 @@ class SQLCompiler(NonrelCompiler):
             raise DatabaseError("Only AND filters are supported")
 
         # Remove unneeded children from tree
-        children = get_children(filters.children)
+        children = self._get_children(filters.children)
 
         if self.negated and filters.connector != OR and len(children) > 1:
             raise DatabaseError("When negating a whole filter subgroup (e.g., a Q "
@@ -185,6 +185,8 @@ class SQLCompiler(NonrelCompiler):
             assert hasattr(constraint, 'process')
             packed, value = constraint.process(lookup_type, value, self.connection)
             alias, column, db_type = packed
+            value = self._normalize_lookup_value(value, annotation, lookup_type)
+
             # TODO: Add more reliable check that also works with JOINs
             is_primary_key = column == self.query.get_meta().pk.column
             # TODO: fill with real data
@@ -193,19 +195,6 @@ class SQLCompiler(NonrelCompiler):
 
             if joins:
                 raise DatabaseError("Joins aren't supported")
-
-            # Django fields always return a list (see Field.get_db_prep_lookup)
-            # except if get_db_prep_lookup got overridden by a subclass
-            if lookup_type != 'in' and isinstance(value, (tuple, list)):
-                if len(value) > 1:
-                    raise DatabaseError('Filter lookup type was: %s. Expected the '
-                                    'filters value not to be a list. Only "in"-filters '
-                                    'can be used with lists.'
-                                    % lookup_type)
-                elif lookup_type == 'isnull':
-                    value = annotation
-                else:
-                    value = value[0]
 
             if lookup_type == 'startswith':
                 value = value[:-1]
@@ -454,20 +443,6 @@ class SQLDeleteCompiler(SQLCompiler):
                 Delete([key for key in pk_filters if key is not None])
         except Exception, e: 
             raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
-
-def get_children(children):
-    # Filter out nodes that were automatically added by sql.Query, but are
-    # not necessary with our negation handling code
-    result = []
-    for child in children:
-        if isinstance(child, Node) and child.negated and \
-                len(child.children) == 1 and \
-                isinstance(child.children[0], tuple):
-            node, lookup_type, annotation, value = child.children[0]
-            if lookup_type == 'isnull' and value == True and node.field is None:
-                continue
-        result.append(child)
-    return result
 
 def to_datetime(value):
     """Convert a time or date to a datetime for datastore storage.
