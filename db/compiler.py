@@ -82,17 +82,8 @@ class SQLCompiler(NonrelCompiler):
             else:
                 low_mark, high_mark = self.limits
                 if high_mark is None:
-                    # Get results in batches
-                    high_mark = low_mark + 25
-                    while True:
-                        results = query.Get(high_mark - low_mark, low_mark)
-                        if not results:
-                            break
-                        low_mark = high_mark
-                        high_mark += 100
-                        for entity in results:
-                            yield self._make_result(entity)
-                    return
+                    results = query.Run(offset=low_mark, prefetch_count=25,
+                                        next_count=75)
                 elif high_mark > low_mark:
                     results = query.Get(high_mark - low_mark, low_mark)
                 else:
