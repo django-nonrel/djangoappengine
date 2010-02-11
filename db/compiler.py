@@ -81,26 +81,29 @@ class SQLCompiler(NonrelCompiler):
                 results = self.get_matching_pk(pk_filters)
             else:
                 low_mark, high_mark = self.limits
-                if high_mark > low_mark:
+                if high_mark is None:
+                    # Get results in batches
+                    high_mark = low_mark + 25
+                    times = 0
+                    while True:
+                        results = query.Get(high_mark - low_mark, low_mark)
+                        if not results:
+                            break
+                        times += 1
+                        low_mark = high_mark
+                        high_mark += 100
+                        for entity in results:
+                            yield self._make_result(entity)
+                    return
+                elif high_mark > low_mark:
                     results = query.Get(high_mark - low_mark, low_mark)
                 else:
                     results = ()
+
+            for entity in results:
+                yield self._make_result(entity)
         except GAEError, e:
             raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
-
-        for entity in results:
-            # TODO: GAE: support parents via GAEKeyField
-            assert entity.key().parent() is None, "Parents are not yet supported!"
-            entity[self.query.get_meta().pk.column] = entity.key().id_or_name()
-            # TODO: support lazy loading of fields
-            result = []
-            for field in self.query.get_meta().local_fields:
-                if not field.null and entity.get(field.column,
-                        field.get_default()) is None:
-                    raise ValueError("Non-nullable field %s can't be None!" % field.name)
-                result.append(self.convert_value_from_db(field.db_type(
-                    connection=self.connection), entity.get(field.column, field.get_default())))
-            yield result
 
     def has_results(self):
         return self.get_count(check_exists=True)
@@ -123,6 +126,20 @@ class SQLCompiler(NonrelCompiler):
             high_mark = self.limits[1]
 
         return query.Count(high_mark)
+
+    def _make_result(self, entity):
+        # TODO: GAE: support parents via GAEKeyField
+        assert entity.key().parent() is None, "Parents are not yet supported!"
+        entity[self.query.get_meta().pk.column] = entity.key().id_or_name()
+        # TODO: support lazy loading of fields
+        result = []
+        for field in self.query.get_meta().local_fields:
+            if not field.null and entity.get(field.column,
+                    field.get_default()) is None:
+                raise ValueError("Non-nullable field %s can't be None!" % field.name)
+            result.append(self.convert_value_from_db(field.db_type(
+                connection=self.connection), entity.get(field.column, field.get_default())))
+        return result
 
     def build_query(self):
         query = Query(self.query.get_meta().db_table)
@@ -276,10 +293,7 @@ class SQLCompiler(NonrelCompiler):
 
     @property
     def limits(self):
-        high_mark = 301
-        if self.query.high_mark is not None:
-            high_mark = self.query.high_mark
-        return self.query.low_mark, high_mark
+        return self.query.low_mark, self.query.high_mark
 
     def get_matching_pk(self, pk_filters):
         pk_filters = [key for key in pk_filters if key is not None]
@@ -292,7 +306,7 @@ class SQLCompiler(NonrelCompiler):
         if self._get_ordering():
             results.sort(cmp=self.order_pk_filtered)
         low_mark, high_mark = self.limits
-        if high_mark < len(results) - 1:
+        if high_mark is not None and high_mark < len(results) - 1:
             results = results[:high_mark]
         if low_mark:
             results = results[low_mark:]
