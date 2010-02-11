@@ -1,16 +1,20 @@
-from .basecompiler import NonrelCompiler
 import datetime
+import sys
+
 from django.conf import settings
 from django.db.models.sql import aggregates as sqlaggregates
 from django.db.models.sql.constants import LOOKUP_SEP, MULTI, SINGLE
 from django.db.models.sql.where import AND, OR
 from django.db.utils import DatabaseError, IntegrityError
 from django.utils.tree import Node
+
 from google.appengine.api.datastore import Entity, Query, Put, Get, Delete, Key
+from google.appengine.api.datastore_errors import Error as GAEError
 from google.appengine.api.datastore_types import Text, Category, Email, Link, \
     PhoneNumber, PostalAddress, Text, Blob, ByteString, GeoPt, IM, Key, \
     Rating, BlobKey
-import sys
+
+from .basecompiler import NonrelCompiler
 
 # Valid query types (a dictionary is used for speedy lookups).
 OPERATORS_MAP = {
@@ -58,7 +62,7 @@ class SQLCompiler(NonrelCompiler):
             assert aggregate.col == '*'
             try:
                 count = self.get_count()
-            except Exception, e: 
+            except GAEError, e:
                 raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
             if result_type is SINGLE:
                 return [count]
@@ -81,7 +85,7 @@ class SQLCompiler(NonrelCompiler):
                     results = query.Get(high_mark - low_mark, low_mark)
                 else:
                     results = ()
-        except Exception, e: 
+        except GAEError, e:
             raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
 
         for entity in results:
@@ -425,7 +429,7 @@ class SQLInsertCompiler(SQLCompiler):
             entity.update(data)
             key = Put(entity)
             return key.id_or_name()
-        except Exception, e: 
+        except GAEError, e:
             raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
 
 class SQLUpdateCompiler(SQLCompiler):
@@ -441,7 +445,7 @@ class SQLDeleteCompiler(SQLCompiler):
             assert not query, 'Deletion queries must only consist of pk filters!'
             if pk_filters:
                 Delete([key for key in pk_filters if key is not None])
-        except Exception, e: 
+        except GAEError, e:
             raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
 
 def to_datetime(value):

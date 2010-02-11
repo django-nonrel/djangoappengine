@@ -102,15 +102,15 @@ class DatabaseValidation(BaseDatabaseValidation):
 
 class DatabaseIntrospection(BaseDatabaseIntrospection):
     def table_names(self):
-        "Returns a list of names of all tables that exist in the database."
-        return self.django_table_names(only_existing=False)
+        """Returns a list of names of all tables that exist in the database."""
+        return self.django_table_names()
 
 class FakeCursor(object):
     def __getattribute__(self, name):
-        raise TypeError("The App Engine backend doesn't support cursors.")
+        raise NotImplementedError("The App Engine backend doesn't support cursors.")
 
     def __setattr__(self, name, value):
-        raise TypeError("The App Engine backend doesn't support cursors.")
+        raise NotImplementedError("The App Engine backend doesn't support cursors.")
 
 class DatabaseWrapper(BaseDatabaseWrapper):
     def __init__(self, *args, **kwds):
