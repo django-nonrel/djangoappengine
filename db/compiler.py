@@ -84,12 +84,10 @@ class SQLCompiler(NonrelCompiler):
                 if high_mark is None:
                     # Get results in batches
                     high_mark = low_mark + 25
-                    times = 0
                     while True:
                         results = query.Get(high_mark - low_mark, low_mark)
                         if not results:
                             break
-                        times += 1
                         low_mark = high_mark
                         high_mark += 100
                         for entity in results:
