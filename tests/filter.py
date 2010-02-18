@@ -285,3 +285,25 @@ class FilterTest(TestCase):
                             email__in=['app-engine@scholardocs.com',
                             'rasengan@naruto.com'])], ['app-engine@scholardocs.com',
                             'rasengan@naruto.com'])
+
+    def test_values(self):
+        # test values()
+        self.assertEquals([entity['pk'] for entity in
+                            FieldsWithOptionsModel.objects.filter(integer__gt=3).
+                            order_by('integer').values('pk')],
+                            ['app-engine@scholardocs.com', 'rinnengan@sage.de'])
+
+        self.assertEquals(FieldsWithOptionsModel.objects.filter(integer__gt=3).
+                            order_by('integer').values('pk').count(), 2)
+
+        # these queries first fetch the whole entity and then only return the 
+        # desired fields selected in .values
+        self.assertEquals([entity['integer'] for entity in
+                            FieldsWithOptionsModel.objects.filter(
+                            email__startswith='r').order_by('email').values(
+                            'integer')], [1, 9])
+
+        self.assertEquals([entity['floating_point'] for entity in
+                            FieldsWithOptionsModel.objects.filter(integer__gt=3).
+                            order_by('integer').values('floating_point')],
+                            [5.3, 9.1])

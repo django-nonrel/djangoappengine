@@ -79,6 +79,7 @@ class SQLCompiler(NonrelCompiler):
             fields = None
             if fields is None:
                 fields = self.get_fields()
+
             pks_only = False
             if len(fields) == 1 and fields[0].primary_key:
                 pks_only = True
