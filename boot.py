@@ -91,8 +91,8 @@ def setup_logging():
         logging.getLogger().setLevel(logging.INFO)
 
 def setup_project():
-    from .utils import on_production_server
-    if on_production_server:
+    from .utils import have_appserver
+    if have_appserver:
         # This fixes a pwd import bug for os.path.expanduser()
         global env_ext
         env_ext['HOME'] = PROJECT_DIR
