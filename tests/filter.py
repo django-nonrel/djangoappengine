@@ -296,7 +296,7 @@ class FilterTest(TestCase):
         self.assertEquals(FieldsWithOptionsModel.objects.filter(integer__gt=3).
                             order_by('integer').values('pk').count(), 2)
 
-        # these queries first fetch the whole entity and then only return the 
+        # these queries first fetch the whole entity and then only return the
         # desired fields selected in .values
         self.assertEquals([entity['integer'] for entity in
                             FieldsWithOptionsModel.objects.filter(
@@ -307,3 +307,19 @@ class FilterTest(TestCase):
                             FieldsWithOptionsModel.objects.filter(integer__gt=3).
                             order_by('integer').values('floating_point')],
                             [5.3, 9.1])
+
+    def test_range(self):
+        # test range on float
+        self.assertEquals([entity.floating_point for entity in
+                          FieldsWithOptionsModel.objects.filter(
+                          floating_point__range=(2.6, 9.1)).
+                          order_by('floating_point')], [2.6, 5.3, 9.1,])
+
+        # test range on pk
+        self.assertEquals([entity.pk for entity in
+                          FieldsWithOptionsModel.objects.filter(
+                          pk__range=('app-engine@scholardocs.com', 'rinnengan@sage.de')).
+                          order_by('pk')], ['app-engine@scholardocs.com',
+                          'rasengan@naruto.com', 'rinnengan@sage.de',])
+
+        # TODO: test it on datetime ranges as far as possible

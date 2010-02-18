@@ -27,9 +27,10 @@ OPERATORS_MAP = {
     # The following operators are supported with special code below:
     'isnull': None,
     'startswith': None,
+    'range': None,
 
     # TODO: support these filters
-    # in, range
+    # in
 }
 
 NEGATION_MAP = {
@@ -240,10 +241,21 @@ class SQLCompiler(NonrelCompiler):
                     # not a str. Otherwise the key would be converted back to a
                     # unicode (see convert_value_for_db)
                     db_type = 'gae_key'
-                    if not isinstance(value, (basestring, int, long)):
-                        raise DatabaseError("Lookup values on primary keys have to be"
-                                        " a string or an integer.")
-                    value = create_key(db_table, value)
+                    key_type_error = """Lookup values on primary keys have to be 
+                                        a string or an integer."""
+                    if lookup_type == 'range':
+                        if isinstance(value,(list, tuple)) and not(isinstance(
+                                value[0], (basestring, int, long)) and \
+                                isinstance(value[1], (basestring, int, long))):
+                            raise DatabaseError(key_type_error)
+                    elif not isinstance(value,(basestring, int, long)):
+                        raise DatabaseError(key_type_error)
+                    # for lookup type range we have to deal with a list
+                    if lookup_type == 'range':
+                        value[0] = create_key(db_table, value[0])
+                        value[1] = create_key(db_table, value[1])
+                    else:
+                        value = create_key(db_table, value)
 
             if lookup_type not in OPERATORS_MAP:
                 raise DatabaseError("Lookup type %r isn't supported" % lookup_type)
@@ -281,6 +293,14 @@ class SQLCompiler(NonrelCompiler):
                     value += u'\ufffd'
                 query["%s %s" % (column, op)] = self.convert_value_for_db(
                     db_type, value)
+                continue
+            elif lookup_type == 'range':
+                op = '>='
+                query["%s %s" % (column, op)] = self.convert_value_for_db(
+                    db_type, value[0])
+                op = '<='
+                query["%s %s" % (column, op)] = self.convert_value_for_db(
+                    db_type, value[1])
                 continue
             else:
                 op = OPERATORS_MAP[lookup_type]
@@ -393,10 +413,10 @@ class SQLCompiler(NonrelCompiler):
             db_sub_type = db_type.split('ListField:')[1]
             for i, val in enumerate(value):
                 value[i] = self.convert_value_for_db(db_sub_type, val)
-        # long text fields cannot be indexed on GAE so use GAE's database type
-        # Text
         if db_type == 'gae_key':
             return value
+        # long text fields cannot be indexed on GAE so use GAE's database type
+        # Text
         if db_type == 'longtext':
             value = Text((isinstance(value, str) and value.decode('utf-8')) or value)
         elif db_type == 'text':
