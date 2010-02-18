@@ -78,26 +78,12 @@ class SQLCompiler(NonrelCompiler):
         try:
             fields = None
             if fields is None:
-                # We only set this up here because
-                # related_select_fields isn't populated until
-                # execute_sql() has been called.
-                if self.query.select_fields:
-                    fields = self.query.select_fields + self.query.related_select_fields
-                else:
-                    fields = self.query.model._meta.fields
-                # If the field was deferred, exclude it from being passed
-                # into `resolve_columns` because it wasn't selected.
-                only_load = self.deferred_to_columns()
-                if only_load:
-                    db_table = self.query.model._meta.db_table
-                    fields = [f for f in fields if db_table in only_load and
-                              f.column in only_load[db_table]]
-
-            keys_only = False
+                fields = self.get_fields()
+            pks_only = False
             if len(fields) == 1 and fields[0].primary_key:
-                keys_only = True
+                pks_only = True
 
-            query, pk_filters = self.build_query(keys_only=keys_only)
+            query, pk_filters = self.build_query(pks_only=pks_only)
 
             if pk_filters:
                 results = self.get_matching_pk(pk_filters)
@@ -156,8 +142,8 @@ class SQLCompiler(NonrelCompiler):
                 connection=self.connection), entity.get(field.column, field.get_default())))
         return result
 
-    def build_query(self, keys_only=False):
-        query = Query(self.query.get_meta().db_table, keys_only=keys_only)
+    def build_query(self, pks_only=False):
+        query = Query(self.query.get_meta().db_table, keys_only=pks_only)
         self.negated = False
         self.inequality_field = None
 

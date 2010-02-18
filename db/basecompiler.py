@@ -25,6 +25,26 @@ class NonrelCompiler(SQLCompiler):
     column names.
     """
 
+    def get_fields(self):
+        """
+        Returns the fields which should get loaded from the backend by self.query        
+        """
+        # We only set this up here because
+        # related_select_fields isn't populated until
+        # execute_sql() has been called.
+        if self.query.select_fields:
+            fields = self.query.select_fields + self.query.related_select_fields
+        else:
+            fields = self.query.model._meta.fields
+        # If the field was deferred, exclude it from being passed
+        # into `resolve_columns` because it wasn't selected.
+        only_load = self.deferred_to_columns()
+        if only_load:
+            db_table = self.query.model._meta.db_table
+            fields = [f for f in fields if db_table in only_load and
+                      f.column in only_load[db_table]]
+        return fields
+
     def _normalize_lookup_value(self, value, annotation, lookup_type):
         # Django fields always return a list (see Field.get_db_prep_lookup)
         # except if get_db_prep_lookup got overridden by a subclass
