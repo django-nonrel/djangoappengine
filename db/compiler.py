@@ -59,11 +59,12 @@ class SQLCompiler(NonrelCompiler):
             assert len(aggregates) == 1
             aggregate = aggregates[0]
             assert isinstance(aggregate, sqlaggregates.Count)
-            assert aggregate.col == '*'
+            meta = self.query.get_meta()
+            assert aggregate.col == '*' or aggregate.col == (meta.db_table, meta.pk.column)
             try:
                 count = self.get_count()
             except GAEError, e:
-                raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
+                raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2]
             if result_type is SINGLE:
                 return [count]
             elif result_type is MULTI:
@@ -75,7 +76,28 @@ class SQLCompiler(NonrelCompiler):
         Returns an iterator over the results from executing this query.
         """
         try:
-            query, pk_filters = self.build_query()
+            fields = None
+            if fields is None:
+                # We only set this up here because
+                # related_select_fields isn't populated until
+                # execute_sql() has been called.
+                if self.query.select_fields:
+                    fields = self.query.select_fields + self.query.related_select_fields
+                else:
+                    fields = self.query.model._meta.fields
+                # If the field was deferred, exclude it from being passed
+                # into `resolve_columns` because it wasn't selected.
+                only_load = self.deferred_to_columns()
+                if only_load:
+                    db_table = self.query.model._meta.db_table
+                    fields = [f for f in fields if db_table in only_load and
+                              f.column in only_load[db_table]]
+
+            keys_only = False
+            if len(fields) == 1 and fields[0].primary_key:
+                keys_only = True
+
+            query, pk_filters = self.build_query(keys_only=keys_only)
 
             if pk_filters:
                 results = self.get_matching_pk(pk_filters)
@@ -90,9 +112,9 @@ class SQLCompiler(NonrelCompiler):
                     results = ()
 
             for entity in results:
-                yield self._make_result(entity)
+                yield self._make_result(entity, fields)
         except GAEError, e:
-            raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
+            raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2]
 
     def has_results(self):
         return self.get_count(check_exists=True)
@@ -116,13 +138,17 @@ class SQLCompiler(NonrelCompiler):
 
         return query.Count(high_mark)
 
-    def _make_result(self, entity):
-        # TODO: GAE: support parents via GAEKeyField
-        assert entity.key().parent() is None, "Parents are not yet supported!"
-        entity[self.query.get_meta().pk.column] = entity.key().id_or_name()
+    def _make_result(self, entity, fields):
+        if isinstance(entity, Key):
+            key = entity
+            entity = {}
+        else:
+            key = entity.key()
+
+        entity[self.query.get_meta().pk.column] = key
         # TODO: support lazy loading of fields
         result = []
-        for field in self.query.get_meta().local_fields:
+        for field in fields:
             if not field.null and entity.get(field.column,
                     field.get_default()) is None:
                 raise ValueError("Non-nullable field %s can't be None!" % field.name)
@@ -130,8 +156,8 @@ class SQLCompiler(NonrelCompiler):
                 connection=self.connection), entity.get(field.column, field.get_default())))
         return result
 
-    def build_query(self):
-        query = Query(self.query.get_meta().db_table)
+    def build_query(self, keys_only=False):
+        query = Query(self.query.get_meta().db_table, keys_only=keys_only)
         self.negated = False
         self.inequality_field = None
 
@@ -341,20 +367,23 @@ class SQLCompiler(NonrelCompiler):
 #        elif isinstance(value, IM):
         # for now we do not support KeyFields thus a Key has to be the own
         # primary key
-        elif isinstance(value, Key) and db_type == 'integer':
-            if value.id() == None:
-                raise DatabaseError('Wrong type for Key. Excepted integer found' \
-                    'None or string')
+        elif isinstance(value, Key):
+            # TODO: GAE: support parents via GAEKeyField
+            assert value.parent() is None, "Parents are not yet supported!"
+            if db_type == 'integer':
+                if value.id() == None:
+                    raise DatabaseError('Wrong type for Key. Excepted integer found' \
+                        'None or string')
+                else:
+                    value = value.id()
+            elif db_type == 'text':
+                if value.name() == None:
+                    raise DatabaseError('Wrong type for Key. Excepted string found' \
+                        'None or id')
+                else:
+                    value = value.name()
             else:
-                value = value.id()
-        elif isinstance(value, Key) and db_type == 'text':
-            if value.name() == None:
-                raise DatabaseError('Wrong type for Key. Excepted string found' \
-                    'None or id')
-            else:
-                value = value.name()
-        elif isinstance(value, Key) and db_type == 'longtext':
-            raise DatabaseError("Long text fields cannot be keys on GAE")
+                raise DatabaseError("%s fields cannot be keys on GAE" % db_type)
 #        TODO: Use long in order to simulate decimal?
 #        elif isinstance(value, long):
 #        elif isinstance(value, Rating):
@@ -433,7 +462,7 @@ class SQLInsertCompiler(SQLCompiler):
             key = Put(entity)
             return key.id_or_name()
         except GAEError, e:
-            raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
+            raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2]
 
 class SQLUpdateCompiler(SQLCompiler):
     def execute_sql(self, result_type=MULTI):
@@ -449,7 +478,7 @@ class SQLDeleteCompiler(SQLCompiler):
             if pk_filters:
                 Delete([key for key in pk_filters if key is not None])
         except GAEError, e:
-            raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2] 
+            raise DatabaseError, DatabaseError(*tuple(e)), sys.exc_info()[2]
 
 def to_datetime(value):
     """Convert a time or date to a datetime for datastore storage.
