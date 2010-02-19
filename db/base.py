@@ -161,7 +161,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         remote_api_stub.ConfigureRemoteDatastore(self.remote_app_id,
             self.remote_url, auth_func, self.remote_host,
             rpc_server_factory=rpc_server_factory)
-        logging.info('Now using the datastore at "%s" at http://%s%s' %
+        logging.info('Now using the remote datastore for "%s" at http://%s%s' %
                      (self.remote_app_id, self.remote_host, self.remote_url))
 
     def flush(self):
