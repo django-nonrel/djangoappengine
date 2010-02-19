@@ -151,9 +151,6 @@ class SQLCompiler(NonrelCompiler):
 
         pk_filters = self._add_filters_to_query(query, self.query.where)
 
-        del self.negated
-        del self.inequality_field
-
         # TODO: Add select_related (maybe as separate class/layer, though)
 
         ordering = []
@@ -206,19 +203,18 @@ class SQLCompiler(NonrelCompiler):
                 continue
 
             constraint, lookup_type, annotation, value = child
-            assert hasattr(constraint, 'process')
             packed, value = constraint.process(lookup_type, value, self.connection)
             alias, column, db_type = packed
             value = self._normalize_lookup_value(value, annotation, lookup_type)
 
             # TODO: Add more reliable check that also works with JOINs
             is_primary_key = column == self.query.get_meta().pk.column
-            # TODO: fill with real data
-            joins = None
             db_table = self.query.get_meta().db_table
 
-            if joins:
-                raise DatabaseError("Joins aren't supported")
+            # TODO: fill with real data
+#            joins = None
+#            if joins:
+#                raise DatabaseError("Joins aren't supported")
 
             if lookup_type == 'startswith':
                 value = value[:-1]
@@ -372,15 +368,15 @@ class SQLCompiler(NonrelCompiler):
             # TODO: GAE: support parents via GAEKeyField
             assert value.parent() is None, "Parents are not yet supported!"
             if db_type == 'integer':
-                if value.id() == None:
-                    raise DatabaseError('Wrong type for Key. Excepted integer found' \
-                        'None or string')
+                if value.id() is None:
+                    raise DatabaseError('Wrong type for Key. Expected integer, found'
+                        'None')
                 else:
                     value = value.id()
             elif db_type == 'text':
-                if value.name() == None:
-                    raise DatabaseError('Wrong type for Key. Excepted string found' \
-                        'None or id')
+                if value.name() is None:
+                    raise DatabaseError('Wrong type for Key. Expected string, found'
+                        'None')
                 else:
                     value = value.name()
             else:
