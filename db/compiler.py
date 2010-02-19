@@ -256,6 +256,9 @@ class SQLCompiler(NonrelCompiler):
             if lookup_type not in OPERATORS_MAP:
                 raise DatabaseError("Lookup type %r isn't supported" % lookup_type)
 
+            # We check for negation after lookup_type isnull because it
+            # simplifies the code. All following lookup_type checks assume
+            # that they're not negated.
             if lookup_type == 'isnull':
                 if (self.negated and value) or not value:
                     # TODO/XXX: is everything greater than None?
