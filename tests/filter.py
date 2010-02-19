@@ -308,6 +308,12 @@ class FilterTest(TestCase):
                             order_by('integer').values('floating_point')],
                             [5.3, 9.1])
 
+        # test values_list
+        self.assertEquals([entity[0] for entity in
+                            FieldsWithOptionsModel.objects.filter(integer__gt=3).
+                            order_by('integer').values_list('pk')],
+                            ['app-engine@scholardocs.com', 'rinnengan@sage.de'])
+
     def test_range(self):
         # test range on float
         self.assertEquals([entity.floating_point for entity in
@@ -331,3 +337,7 @@ class FilterTest(TestCase):
                             time__range=(start_time, self.last_save_time)).order_by('time')],
                             ['app-engine@scholardocs.com', 'sharingan@uchias.com',
                             'rinnengan@sage.de', 'rasengan@naruto.com',])
+                            
+    def test_latest(self):
+        self.assertEquals(FieldsWithOptionsModel.objects.latest('time').floating_point,
+                            1.58)
