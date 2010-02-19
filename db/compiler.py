@@ -362,19 +362,13 @@ class SQLCompiler(NonrelCompiler):
         if isinstance(value, (Category, Email, Link, PhoneNumber, PostalAddress,
                 Text, unicode)):
             value = unicode(value)
-        # always retrieve strings as unicode (it is possible that old datasets
-        # contain non unicode strings, nevertheless work with unicode ones)
         elif isinstance(value, str):
+            # always retrieve strings as unicode (it is possible that old datasets
+            # contain non unicode strings, nevertheless work with unicode ones)
             value = value.decode('utf-8')
-#        elif isinstance(value, Blob):
-#        elif isinstance(value, ByteString):
-#        TODO: convert GeoPt to a field used by geo-django (or some other geo
-#        app for django)
-#        elif isinstance(value, GeoPt):
-#        elif isinstance(value, IM):
-        # for now we do not support KeyFields thus a Key has to be the own
-        # primary key
         elif isinstance(value, Key):
+            # for now we do not support KeyFields thus a Key has to be the own
+            # primary key
             # TODO: GAE: support parents via GAEKeyField
             assert value.parent() is None, "Parents are not yet supported!"
             if db_type == 'integer':
@@ -396,6 +390,12 @@ class SQLCompiler(NonrelCompiler):
 #        elif isinstance(value, Rating):
 #        elif isinstance(value, users.User):
 #        elif isinstance(value, BlobKey):
+#        elif isinstance(value, Blob):
+#        elif isinstance(value, ByteString):
+#        TODO: convert GeoPt to a field used by geo-django (or some other geo
+#        app for django)
+#        elif isinstance(value, GeoPt):
+#        elif isinstance(value, IM):
 
         # here we have to check the db_type because GAE always stores datetime
         # instances
@@ -421,22 +421,11 @@ class SQLCompiler(NonrelCompiler):
             value = Text((isinstance(value, str) and value.decode('utf-8')) or value)
         elif db_type == 'text':
             value = (isinstance(value, str) and value.decode('utf-8')) or value
-        # the following types (CommaSeparatedIntegerField, Emailfield, SlugField,
-        # UrlField) will not be recogniced cause they inherit from
-        # CharField and CharField overrides get_internal_type such that we will
-        # get 'text' as the db_type even if we provide some different mapping in
-        # creation.DatabaseCreation.data_types
-#        elif db_type == 'email':
-#            value = Email((isinstance(value, str) and value.decode('utf-8')) or \
-#                value)
-#        elif db_type == 'link':
-#            value = Link((isinstance(value, str) and value.decode('utf-8')) or \
-#                value)
-        # always store unicode strings
         elif type(value) is str:
+            # always store unicode strings
             value = value.decode('utf-8')
-        # here we have to check the db_type because GAE always stores datetimes
         elif db_type == 'date' or db_type == 'time' or db_type == 'datetime':
+            # here we have to check the db_type because GAE always stores datetimes
             value = to_datetime(value)
         return value
 
