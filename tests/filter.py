@@ -322,4 +322,12 @@ class FilterTest(TestCase):
                           order_by('pk')], ['app-engine@scholardocs.com',
                           'rasengan@naruto.com', 'rinnengan@sage.de',])
 
-        # TODO: test it on datetime ranges as far as possible
+        # test range on date/datetime objects
+        start_time = datetime.time(self.last_save_time.hour,
+            self.last_save_time.minute - 1, self.last_save_time.second,
+            self.last_save_time.microsecond)
+        self.assertEquals([entity.email for entity in
+                            FieldsWithOptionsModel.objects.filter(
+                            time__range=(start_time, self.last_save_time)).order_by('time')],
+                            ['app-engine@scholardocs.com', 'sharingan@uchias.com',
+                            'rinnengan@sage.de', 'rasengan@naruto.com',])
