@@ -13,7 +13,7 @@ def rpc_server_factory(*args, ** kwargs):
     kwargs['save_cookies'] = True
     return appengine_rpc.HttpRpcServer(*args, ** kwargs)
 
-def get_datastore_paths(settings_dict):
+def get_datastore_paths(options):
     """Returns a tuple with the path to the datastore and history file.
 
     The datastore is stored in the same location as dev_appserver uses by
@@ -24,7 +24,6 @@ def get_datastore_paths(settings_dict):
       (datastore_path, history_path)
     """
     from google.appengine.tools import dev_appserver_main
-    options = settings_dict['OPTIONS']
     datastore_path = options.get('datastore_path',
                                  dev_appserver_main.DEFAULT_ARGS['datastore_path'].replace(
                                  'dev_appserver', 'django_%s' % appid))
