@@ -30,6 +30,7 @@ class DatabaseCreation(BaseDatabaseCreation):
         'AutoField':         'integer',
         'OneToOneField':     'integer',
         'DecimalField':      'decimal',
+        'BlobField':         'blob',
 #        'ImageField':
         # TODO: Add KeyField and a correspoding db_type
     }

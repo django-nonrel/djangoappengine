@@ -361,6 +361,8 @@ class SQLCompiler(NonrelCompiler):
         if isinstance(value, (Category, Email, Link, PhoneNumber, PostalAddress,
                 Text, unicode)):
             value = unicode(value)
+        elif isinstance(value, Blob):
+            value = str(value)
         elif isinstance(value, str):
             # always retrieve strings as unicode (it is possible that old datasets
             # contain non unicode strings, nevertheless work with unicode ones)
@@ -389,7 +391,6 @@ class SQLCompiler(NonrelCompiler):
 #        elif isinstance(value, Rating):
 #        elif isinstance(value, users.User):
 #        elif isinstance(value, BlobKey):
-#        elif isinstance(value, Blob):
 #        elif isinstance(value, ByteString):
 #        TODO: convert GeoPt to a field used by geo-django (or some other geo
 #        app for django)
@@ -414,12 +415,14 @@ class SQLCompiler(NonrelCompiler):
                 value[i] = self.convert_value_for_db(db_sub_type, val)
         if db_type == 'gae_key':
             return value
-        # long text fields cannot be indexed on GAE so use GAE's database type
-        # Text
-        if db_type == 'longtext':
+        elif db_type == 'longtext':
+            # long text fields cannot be indexed on GAE so use GAE's database
+            # type Text
             value = Text((isinstance(value, str) and value.decode('utf-8')) or value)
         elif db_type == 'text':
             value = (isinstance(value, str) and value.decode('utf-8')) or value
+        elif db_type == 'blob':
+            value = Blob(value)
         elif type(value) is str:
             # always store unicode strings
             value = value.decode('utf-8')
