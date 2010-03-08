@@ -9,8 +9,10 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 # Remove the standard version of Django
-for k in [k for k in sys.modules if k.startswith('django')]:
-    del sys.modules[k]
+if 'django' in sys.modules and sys.modules['django'].VERSION < (1, 2):
+    for k in [k for k in sys.modules
+              if k.startswith('django\.') or k == 'django']:
+        del sys.modules[k]
 
 from djangoappengine import boot
 boot.setup_threading()
