@@ -2,7 +2,7 @@ import os, sys
 
 # We allow a two-level project structure where your root folder contains
 # project-specific apps and the "common" subfolder contains common apps.
-COMMON_DIR = os.path.dirname(os.path.dirname(__file__))
+COMMON_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 PROJECT_DIR = os.path.dirname(COMMON_DIR)
 if os.path.basename(COMMON_DIR) == 'common-apps':
     MAIN_DIRS = (PROJECT_DIR, COMMON_DIR)
