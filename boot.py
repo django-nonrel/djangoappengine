@@ -48,7 +48,8 @@ def setup_env():
         if SDK_PATH is None:
             # The SDK could not be found in any known location.
             sys.stderr.write('The Google App Engine SDK could not be found!\n'
-                             "Make sure it's accessible via your PATH environment.")
+                             "Make sure it's accessible via your PATH "
+                             "environment and called google_appengine.")
             sys.exit(1)
         # Add the SDK and the libraries within it to the system path.
         EXTRA_PATHS = [SDK_PATH]
