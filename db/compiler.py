@@ -139,7 +139,7 @@ class SQLCompiler(NonrelCompiler):
         for field in fields:
             if not field.null and entity.get(field.column,
                     field.get_default()) is None:
-                raise ValueError("Non-nullable field %s can't be None!" % field.name)
+                raise DatabaseError("Non-nullable field %s can't be None!" % field.name)
             result.append(self.convert_value_from_db(field.db_type(
                 connection=self.connection), entity.get(field.column, field.get_default())))
         return result
@@ -408,7 +408,11 @@ class SQLCompiler(NonrelCompiler):
         return value
 
     def convert_value_for_db(self, db_type, value):
-        if isinstance(value, (list, tuple)) and len(value) and \
+        if isinstance(value, unicode):
+            value = unicode(value)
+        elif isinstance(value, str):
+            value = str(value)
+        elif isinstance(value, (list, tuple)) and len(value) and \
                 db_type.startswith('ListField:'):
             db_sub_type = db_type.split('ListField:')[1]
             for i, val in enumerate(value):
@@ -438,8 +442,8 @@ class SQLInsertCompiler(SQLCompiler):
         for (field, value), column in zip(self.query.values, self.query.columns):
             if field is not None:
                 if not field.null and value is None:
-                    raise ValueError("You can't set %s (a non-nullable field) "
-                                     "to None!" % field.name)
+                    raise DatabaseError("You can't set %s (a non-nullable "
+                                        "field) to None!" % field.name)
                 value = self.convert_value_for_db(field.db_type(connection=self.connection),
                     value)
             if column == self.query.get_meta().pk.name:
@@ -447,9 +451,9 @@ class SQLInsertCompiler(SQLCompiler):
                     kwds['name'] = value
                 else:
                     kwds['id'] = value
-            # gae does not store emty lists (and even does not allow passing empty
-            # lists to Entity.update) so skip them
             elif isinstance(value, (tuple, list)) and not len(value):
+                # gae does not store emty lists (and even does not allow passing empty
+                # lists to Entity.update) so skip them
                 continue
             else:
                 data[column] = value

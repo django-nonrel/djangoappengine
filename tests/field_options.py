@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.db.utils import DatabaseError
 from django.db.models.fields import NOT_PROVIDED
 from .testmodels import FieldsWithOptionsModel
 from google.appengine.api.datastore import Get
@@ -14,7 +15,7 @@ class FieldOptionsTest(TestCase):
         entity = FieldsWithOptionsModel()
         # try to save the entity with non-nullable field time set to None, should
         # raise an exception
-        self.assertRaises(ValueError, entity.save)
+        self.assertRaises(DatabaseError, entity.save)
 
         time = datetime.datetime.now().time()
         entity.time = time
