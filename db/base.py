@@ -1,3 +1,4 @@
+import datetime
 from .creation import DatabaseCreation
 from ..utils import appid, have_appserver, on_production_server
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseOperations, \
@@ -92,6 +93,10 @@ class DatabaseOperations(BaseDatabaseOperations):
     def check_aggregate_support(self, aggregate):
         # TODO: Only COUNT(*) should be supported. Raise NotImplementedError
         pass
+
+    def year_lookup_bounds(self, value): 
+        return [datetime.datetime(value, 1, 1, 0, 0, 0, 0),
+                datetime.datetime(value+1, 1, 1, 0, 0, 0, 0)]
 
 class DatabaseClient(BaseDatabaseClient):
     pass

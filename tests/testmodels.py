@@ -3,6 +3,9 @@ from django.db import models
 class EmailModel(models.Model):
     email = models.EmailField()
 
+class DateTimeModel(models.Model):
+    datetime = models.DateTimeField()
+
 class FieldsWithoutOptionsModel(models.Model):
     datetime = models.DateTimeField()
     date = models.DateField()

@@ -1,4 +1,4 @@
-from .testmodels import FieldsWithOptionsModel, EmailModel, OrderedModel
+from .testmodels import FieldsWithOptionsModel, EmailModel, DateTimeModel, OrderedModel
 import datetime, time
 from django.test import TestCase
 from django.db.models import Q
@@ -8,10 +8,14 @@ class FilterTest(TestCase):
     floats = [5.3, 2.6, 9.1, 1.58]
     emails = ['app-engine@scholardocs.com', 'sharingan@uchias.com',
         'rinnengan@sage.de', 'rasengan@naruto.com']
-
+    datetimes = [datetime.datetime(2010, 1, 1, 0, 0, 0, 0),
+        datetime.datetime(2010, 12, 31, 23, 59, 59, 999999),
+        datetime.datetime(2011, 1, 1, 0, 0, 0, 0),
+        datetime.datetime(2013, 7, 28, 22, 30, 20, 50)]
+    
     def setUp(self):
-        for index, (float, email) in enumerate(zip(FilterTest.floats,
-                FilterTest.emails)):
+        for index, (float, email, datetime_value) in enumerate(zip(FilterTest.floats,
+                FilterTest.emails, FilterTest.datetimes)):
             # ensure distinct times when saving entities
             time.sleep(0.01)
             self.last_save_time = datetime.datetime.now().time()
@@ -22,6 +26,7 @@ class FilterTest(TestCase):
                                    time=self.last_save_time,
                                    foreign_key=ordered_instance).save()
             EmailModel(email=email).save()
+            DateTimeModel(datetime=datetime_value).save()
 
     def test_startswith(self):
         self.assertEquals([entity.email for entity in
@@ -337,7 +342,21 @@ class FilterTest(TestCase):
                             time__range=(start_time, self.last_save_time)).order_by('time')],
                             ['app-engine@scholardocs.com', 'sharingan@uchias.com',
                             'rinnengan@sage.de', 'rasengan@naruto.com',])
-                            
+
+    def test_date(self):
+        # test year on date range boundaries
+        self.assertEquals([entity.datetime for entity in
+                            DateTimeModel.objects.filter(
+                            datetime__year=2010).order_by('datetime')],
+                            [datetime.datetime(2010, 1, 1, 0, 0, 0, 0),
+                             datetime.datetime(2010, 12, 31, 23, 59, 59, 999999),])
+
+        # test year on non boundary date
+        self.assertEquals([entity.datetime for entity in
+                            DateTimeModel.objects.filter(
+                            datetime__year=2013).order_by('datetime')],
+                            [datetime.datetime(2013, 7, 28, 22, 30, 20, 50),])
+
     def test_latest(self):
         self.assertEquals(FieldsWithOptionsModel.objects.latest('time').floating_point,
                             1.58)

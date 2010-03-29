@@ -48,7 +48,7 @@ class NonrelCompiler(SQLCompiler):
     def _normalize_lookup_value(self, value, annotation, lookup_type):
         # Django fields always return a list (see Field.get_db_prep_lookup)
         # except if get_db_prep_lookup got overridden by a subclass
-        if lookup_type not in ('in', 'range') and isinstance(value, (tuple, list)):
+        if lookup_type not in ('in', 'range', 'year') and isinstance(value, (tuple, list)):
             if len(value) > 1:
                 raise DatabaseError('Filter lookup type was: %s. Expected the '
                                 'filters value not to be a list. Only "in"-filters '

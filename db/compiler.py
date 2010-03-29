@@ -28,6 +28,7 @@ OPERATORS_MAP = {
     'isnull': None,
     'startswith': None,
     'range': None,
+    'year': None,
 
     # TODO: support these filters
     # in
@@ -293,11 +294,11 @@ class SQLCompiler(NonrelCompiler):
                 query["%s %s" % (column, op)] = self.convert_value_for_db(
                     db_type, value)
                 continue
-            elif lookup_type == 'range':
+            elif lookup_type in ('range', 'year'):
                 op = '>='
                 query["%s %s" % (column, op)] = self.convert_value_for_db(
                     db_type, value[0])
-                op = '<='
+                op = '<=' if lookup_type == 'range' else '<'
                 query["%s %s" % (column, op)] = self.convert_value_for_db(
                     db_type, value[1])
                 continue
