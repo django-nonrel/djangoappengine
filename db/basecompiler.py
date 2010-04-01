@@ -1,5 +1,6 @@
+from django.db.models.sql import aggregates as sqlaggregates
 from django.db.models.sql.compiler import SQLCompiler
-from django.db.models.sql.constants import LOOKUP_SEP
+from django.db.models.sql.constants import LOOKUP_SEP, MULTI, SINGLE
 from django.db.models.sql.where import AND, OR
 from django.db.utils import DatabaseError, IntegrityError
 from django.utils.tree import Node
@@ -25,6 +26,62 @@ class NonrelCompiler(SQLCompiler):
     column names.
     """
 
+    # ----------------------------------------------
+    # Public API
+    # ----------------------------------------------
+    def results_iter(self):
+        """
+        Returns an iterator over the results from executing this query.
+        """
+        fields = self.get_fields()
+        for entity in self.build_query(fields).fetch():
+            yield self._make_result(entity, fields)
+
+    def _make_result(self, entity, fields):
+        result = []
+        for field in fields:
+            if not field.null and entity.get(field.column,
+                    field.get_default()) is None:
+                raise DatabaseError("Non-nullable field %s can't be None!" % field.name)
+            result.append(self.convert_value_from_db(field.db_type(
+                connection=self.connection), entity.get(field.column, field.get_default())))
+        return result
+
+    def has_results(self):
+        return self.get_count(check_exists=True)
+
+    def execute_sql(self, result_type=MULTI):
+        """
+        Handles aggregate/count queries
+        """
+        aggregates = self.query.aggregate_select.values()
+        # Simulate a count()
+        if aggregates:
+            assert len(aggregates) == 1
+            aggregate = aggregates[0]
+            assert isinstance(aggregate, sqlaggregates.Count)
+            meta = self.query.get_meta()
+            assert aggregate.col == '*' or aggregate.col == (meta.db_table, meta.pk.column)
+            count = self.get_count()
+            if result_type is SINGLE:
+                return [count]
+            elif result_type is MULTI:
+                return [[count]]
+        raise NotImplementedError('The database backend only supports count() queries')
+
+    # ----------------------------------------------
+    # Additional NonrelCompiler API
+    # ----------------------------------------------
+    def get_count(self, check_exists=False):
+        """
+        Counts matches using the current filter constraints.
+        """
+        if check_exists:
+            high_mark = 1
+        else:
+            high_mark = self.limits[1]
+        return self.build_query().count(high_mark)
+
     def get_fields(self):
         """
         Returns the fields which should get loaded from the backend by self.query        
@@ -45,6 +102,17 @@ class NonrelCompiler(SQLCompiler):
                       f.column in only_load[db_table]]
         return fields
 
+    @property
+    def limits(self):
+        return self.query.low_mark, self.query.high_mark
+
+    def _decode_child(self, child):
+        constraint, lookup_type, annotation, value = child
+        packed, value = constraint.process(lookup_type, value, self.connection)
+        alias, column, db_type = packed
+        value = self._normalize_lookup_value(value, annotation, lookup_type)
+        return column, lookup_type, db_type, value
+
     def _normalize_lookup_value(self, value, annotation, lookup_type):
         # Django fields always return a list (see Field.get_db_prep_lookup)
         # except if get_db_prep_lookup got overridden by a subclass
@@ -63,6 +131,9 @@ class NonrelCompiler(SQLCompiler):
             value = unicode(value)
         elif isinstance(value, str):
             value = str(value)
+
+        if lookup_type == 'startswith':
+            value = value[:-1]
 
         return value
 
@@ -129,6 +200,9 @@ class NonrelCompiler(SQLCompiler):
             ordering = self.query.order_by or self.query.get_meta().ordering
         result = []
         for order in ordering:
+            if LOOKUP_SEP in order:
+                raise DatabaseError("Ordering can't span tables on non-relational backends (%s)" % order)
+
             if order == '?':
                 result.append(order)
                 continue
@@ -164,3 +238,20 @@ class NonrelCompiler(SQLCompiler):
             if result != 0:
                 return result
         return 0
+
+class NonrelInsertCompiler(object):
+    def execute_sql(self, return_id=False):
+        data = {}
+        for (field, value), column in zip(self.query.values, self.query.columns):
+            if field is not None:
+                if not field.null and value is None:
+                    raise DatabaseError("You can't set %s (a non-nullable "
+                                        "field) to None!" % field.name)
+                value = self.convert_value_for_db(field.db_type(connection=self.connection),
+                    value)
+            data[column] = value
+        return self.insert(data, return_id=return_id)
+
+class NonrelDeleteCompiler(object):
+    def execute_sql(self, result_type=MULTI):
+        self.build_query([self.query.get_meta().pk]).delete()
