@@ -65,7 +65,8 @@ class GAEQuery(NonrelQuery):
         pks_only = False
         if len(fields) == 1 and fields[0].primary_key:
             pks_only = True
-        self.gae_query = Query(self.db_table, keys_only=pks_only)
+        db_table = self.query.get_meta().db_table
+        self.gae_query = Query(db_table, keys_only=pks_only)
 
     # This is needed for debugging
     def __repr__(self):
@@ -75,7 +76,7 @@ class GAEQuery(NonrelQuery):
     def fetch(self):
         query = self.gae_query
         if self.pk_filters:
-            results = self.get_matching_pk(self.pk_filters)
+            results = self.get_matching_pk()
         else:
             low_mark, high_mark = self.limits
             if high_mark is None:
@@ -90,9 +91,9 @@ class GAEQuery(NonrelQuery):
             yield self._make_entity(entity, self.fields)
 
     @safe_call
-    def count(self, limit):
+    def count(self, limit=None):
         if self.pk_filters:
-            return len(self.get_matching_pk(self.pk_filters))
+            return len(self.get_matching_pk())
         return self.gae_query.Count(limit)
 
     @safe_call
@@ -231,8 +232,8 @@ class GAEQuery(NonrelQuery):
         entity[self.query.get_meta().pk.column] = key
         return entity
 
-    def get_matching_pk(self, pk_filters):
-        pk_filters = [key for key in pk_filters if key is not None]
+    def get_matching_pk(self):
+        pk_filters = [key for key in self.pk_filters if key is not None]
         if not pk_filters:
             return []
 
