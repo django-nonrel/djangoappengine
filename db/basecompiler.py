@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db.models.sql import aggregates as sqlaggregates
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.constants import LOOKUP_SEP, MULTI, SINGLE
@@ -81,6 +82,19 @@ class NonrelCompiler(SQLCompiler):
         else:
             high_mark = self.limits[1]
         return self.build_query().count(high_mark)
+
+    def build_query(self, fields=None):
+        if fields is None:
+            fields = self.get_fields()
+        query = self.query_class(self, fields)
+        self.negated = False
+        self._add_filters_to_query(query, self.query.where)
+        query.order_by(self._get_ordering())
+
+        # This at least satisfies the most basic unit tests
+        if settings.DEBUG:
+            self.connection.queries.append({'sql': repr(query)})
+        return query
 
     def get_fields(self):
         """
