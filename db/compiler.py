@@ -15,7 +15,8 @@ from google.appengine.api.datastore_types import Text, Category, Email, Link, \
     PhoneNumber, PostalAddress, Text, Blob, ByteString, GeoPt, IM, Key, \
     Rating, BlobKey
 
-from .basecompiler import NonrelCompiler, NonrelInsertCompiler, NonrelDeleteCompiler
+from djangotoolbox.db.basecompiler import NonrelQuery, NonrelCompiler, \
+    NonrelInsertCompiler, NonrelDeleteCompiler
 
 # Valid query types (a dictionary is used for speedy lookups).
 OPERATORS_MAP = {
@@ -53,21 +54,20 @@ def safe_call(func):
             raise DatabaseError, DatabaseError(str(e)), sys.exc_info()[2]
     return _func
 
-class GAEQuery(object):
+class GAEQuery(NonrelQuery):
+    # ----------------------------------------------
+    # Public API
+    # ----------------------------------------------
     def __init__(self, compiler, fields):
-        self.fields = fields
-        self.compiler = compiler
-        self.connection = compiler.connection
-        self.query = self.compiler.query
-        self.ordering = ()
+        super(GAEQuery, self).__init__(compiler, fields)
         self.inequality_field = None
         self.pk_filters = []
         pks_only = False
         if len(fields) == 1 and fields[0].primary_key:
             pks_only = True
-        db_table = self.query.get_meta().db_table
-        self.gae_query = Query(db_table, keys_only=pks_only)
+        self.gae_query = Query(self.db_table, keys_only=pks_only)
 
+    # This is needed for debugging
     def __repr__(self):
         return '<GAEQuery: %r ORDER %r>' % (self.gae_query, self.ordering)
 
@@ -77,7 +77,7 @@ class GAEQuery(object):
         if self.pk_filters:
             results = self.get_matching_pk(self.pk_filters)
         else:
-            low_mark, high_mark = self.compiler.limits
+            low_mark, high_mark = self.limits
             if high_mark is None:
                 results = query.Run(offset=low_mark, prefetch_count=25,
                                     next_count=75)
@@ -119,17 +119,7 @@ class GAEQuery(object):
             gae_ordering.append((order, direction))
         self.gae_query.Order(*gae_ordering)
 
-    @safe_call
-    def _make_entity(self, entity, fields):
-        if isinstance(entity, Key):
-            key = entity
-            entity = {}
-        else:
-            key = entity.key()
-
-        entity[self.query.get_meta().pk.column] = key
-        return entity
-
+    # This function is used by the default add_filters() implementation
     @safe_call
     def add_filter(self, column, lookup_type, negated, db_type, value):
         query = self.gae_query
@@ -227,6 +217,20 @@ class GAEQuery(object):
         query["%s %s" % (column, op)] = self.convert_value_for_db(db_type,
             value)
 
+    # ----------------------------------------------
+    # Internal API
+    # ----------------------------------------------
+    @safe_call
+    def _make_entity(self, entity, fields):
+        if isinstance(entity, Key):
+            key = entity
+            entity = {}
+        else:
+            key = entity.key()
+
+        entity[self.query.get_meta().pk.column] = key
+        return entity
+
     def get_matching_pk(self, pk_filters):
         pk_filters = [key for key in pk_filters if key is not None]
         if not pk_filters:
@@ -237,7 +241,7 @@ class GAEQuery(object):
                        and self.matches_filters(result)]
         if self.ordering:
             results.sort(cmp=self.order_pk_filtered)
-        low_mark, high_mark = self.compiler.limits
+        low_mark, high_mark = self.limits
         if high_mark is not None and high_mark < len(results) - 1:
             results = results[:high_mark]
         if low_mark:
@@ -249,7 +253,7 @@ class GAEQuery(object):
         left[self.query.get_meta().pk.column] = lhs.key().to_path()
         right = dict(rhs)
         right[self.query.get_meta().pk.column] = rhs.key().to_path()
-        return self.compiler._order_in_memory(left, right)
+        return self._order_in_memory(left, right)
 
     def matches_filters(self, entity):
         item = dict(entity)
@@ -257,48 +261,14 @@ class GAEQuery(object):
         value = self.convert_value_from_db(pk.db_type(connection=self.connection),
             entity.key())
         item[pk.column] = value
-        result = self.compiler._matches_filters(item, self.query.where)
+        result = self._matches_filters(item, self.query.where)
         return result
-
-    def convert_value_for_db(self, *args, **kwargs):
-        return self.compiler.convert_value_for_db(*args, **kwargs)
-
-    def convert_value_from_db(self, *args, **kwargs):
-        return self.compiler.convert_value_from_db(*args, **kwargs)
 
 class SQLCompiler(NonrelCompiler):
     """
     A simple App Engine query: no joins, no distinct, etc.
     """
     query_class = GAEQuery
-
-    def _add_filters_to_query(self, query, filters):
-        if filters.negated:
-            self.negated = not self.negated
-
-        if not self.negated and filters.connector != AND:
-            raise DatabaseError("Only AND filters are supported")
-
-        # Remove unneeded children from tree
-        children = self._get_children(filters.children)
-
-        if self.negated and filters.connector != OR and len(children) > 1:
-            raise DatabaseError("When negating a whole filter subgroup (e.g., a Q "
-                            "object) the subgroup filters must be connected "
-                            "via OR, so the App Engine backend can convert "
-                            "them like this: "
-                            '"not (a OR b) => (not a) AND (not b)".')
-
-        for child in children:
-            if isinstance(child, Node):
-                self._add_filters_to_query(query, child)
-                continue
-
-            column, lookup_type, db_type, value = self._decode_child(child)
-            query.add_filter(column, lookup_type, self.negated, db_type, value)
-
-        if filters.negated:
-            self.negated = not self.negated
 
     def convert_value_from_db(self, db_type, value):
         if isinstance(value, (list, tuple)) and len(value) and \
@@ -412,8 +382,7 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
 class SQLUpdateCompiler(SQLCompiler):
     def execute_sql(self, result_type=MULTI):
         # TODO: Implement me
-        print 'NO UPDATE'
-        pass
+        raise NotImplementedError('No updates')
 
 class SQLDeleteCompiler(NonrelDeleteCompiler, SQLCompiler):
     pass
