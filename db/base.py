@@ -1,8 +1,9 @@
 import datetime
 from .creation import DatabaseCreation
 from ..utils import appid, have_appserver, on_production_server
-from django.db.backends import BaseDatabaseFeatures, BaseDatabaseOperations, \
-    BaseDatabaseWrapper, BaseDatabaseClient, BaseDatabaseValidation, BaseDatabaseIntrospection
+from djangotoolbox.db.base import NonrelDatabaseFeatures, \
+    NonrelDatabaseOperations, NonrelDatabaseWrapper, NonrelDatabaseClient, \
+    NonrelDatabaseValidation, NonrelDatabaseIntrospection
 import logging, os
 
 def auth_func():
@@ -61,62 +62,22 @@ def destroy_datastore(datastore_path, history_path):
             if error.errno != 2:
                 logging.error("Failed to clear datastore: %s" % error)
 
-class DatabaseFeatures(BaseDatabaseFeatures):
-    distinguishes_insert_from_update = False
-    supports_deleting_related_objects = False
-    supports_multi_table_inheritance = False
+class DatabaseFeatures(NonrelDatabaseFeatures):
+    pass
 
-class DatabaseOperations(BaseDatabaseOperations):
+class DatabaseOperations(NonrelDatabaseOperations):
     compiler_module = 'djangoappengine.db.compiler'
 
-    def quote_name(self, name):
-        return name
-
-    def value_to_db_date(self, value):
-        # value is a date here, no need to check it
-        return value
-
-    def value_to_db_datetime(self, value):
-        # value is a datetime here, no need to check it
-        return value
-
-    def value_to_db_time(self, value):
-        # value is a time here, no need to check it
-        return value
-
-#    def value_to_db_decimal(self, value, max_digits, decimal_places):
-#        return
-
-    def prep_for_like_query(self, value):
-        return value
-
-    def check_aggregate_support(self, aggregate):
-        # TODO: Only COUNT(*) should be supported. Raise NotImplementedError
-        pass
-
-    def year_lookup_bounds(self, value): 
-        return [datetime.datetime(value, 1, 1, 0, 0, 0, 0),
-                datetime.datetime(value+1, 1, 1, 0, 0, 0, 0)]
-
-class DatabaseClient(BaseDatabaseClient):
+class DatabaseClient(NonrelDatabaseClient):
     pass
 
-class DatabaseValidation(BaseDatabaseValidation):
+class DatabaseValidation(NonrelDatabaseValidation):
     pass
 
-class DatabaseIntrospection(BaseDatabaseIntrospection):
-    def table_names(self):
-        """Returns a list of names of all tables that exist in the database."""
-        return self.django_table_names()
+class DatabaseIntrospection(NonrelDatabaseIntrospection):
+    pass
 
-class FakeCursor(object):
-    def __getattribute__(self, name):
-        raise NotImplementedError("The App Engine backend doesn't support cursors.")
-
-    def __setattr__(self, name, value):
-        raise NotImplementedError("The App Engine backend doesn't support cursors.")
-
-class DatabaseWrapper(BaseDatabaseWrapper):
+class DatabaseWrapper(NonrelDatabaseWrapper):
     def __init__(self, *args, **kwds):
         super(DatabaseWrapper, self).__init__(*args, **kwds)
         self.features = DatabaseFeatures()
@@ -203,6 +164,3 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         else:
             destroy_datastore(*self._get_paths())
         self._setup_stubs()
-
-    def _cursor(self):
-        return FakeCursor()
