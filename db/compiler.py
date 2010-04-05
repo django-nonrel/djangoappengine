@@ -73,12 +73,11 @@ class GAEQuery(NonrelQuery):
         return '<GAEQuery: %r ORDER %r>' % (self.gae_query, self.ordering)
 
     @safe_call
-    def fetch(self):
+    def fetch(self, low_mark, high_mark):
         query = self.gae_query
         if self.pk_filters:
-            results = self.get_matching_pk()
+            results = self.get_matching_pk(low_mark, high_mark)
         else:
-            low_mark, high_mark = self.limits
             if high_mark is None:
                 results = query.Run(offset=low_mark, prefetch_count=25,
                                     next_count=75)
@@ -88,12 +87,12 @@ class GAEQuery(NonrelQuery):
                 results = ()
 
         for entity in results:
-            yield self._make_entity(entity, self.fields)
+            yield self._make_entity(entity)
 
     @safe_call
     def count(self, limit=None):
         if self.pk_filters:
-            return len(self.get_matching_pk())
+            return len(self.get_matching_pk(0, limit))
         return self.gae_query.Count(limit)
 
     @safe_call
@@ -221,8 +220,7 @@ class GAEQuery(NonrelQuery):
     # ----------------------------------------------
     # Internal API
     # ----------------------------------------------
-    @safe_call
-    def _make_entity(self, entity, fields):
+    def _make_entity(self, entity):
         if isinstance(entity, Key):
             key = entity
             entity = {}
@@ -232,7 +230,7 @@ class GAEQuery(NonrelQuery):
         entity[self.query.get_meta().pk.column] = key
         return entity
 
-    def get_matching_pk(self):
+    def get_matching_pk(self, low_mark=0, high_mark=None):
         pk_filters = [key for key in self.pk_filters if key is not None]
         if not pk_filters:
             return []
@@ -242,7 +240,6 @@ class GAEQuery(NonrelQuery):
                        and self.matches_filters(result)]
         if self.ordering:
             results.sort(cmp=self.order_pk_filtered)
-        low_mark, high_mark = self.limits
         if high_mark is not None and high_mark < len(results) - 1:
             results = results[:high_mark]
         if low_mark:
@@ -274,9 +271,9 @@ class SQLCompiler(NonrelCompiler):
     def convert_value_from_db(self, db_type, value):
         if isinstance(value, (list, tuple)) and len(value) and \
                 db_type.startswith('ListField:'):
-            db_sub_type = db_type.split('ListField:')[1]
-            for i, val in enumerate(value):
-                value[i] = self.convert_value_from_db(db_sub_type, val)
+            db_sub_type = db_type.split(':', 1)[1]
+            value = [self.convert_value_from_db(db_sub_type, subvalue)
+                     for subvalue in value]
 
         # the following GAE database types are all unicode subclasses, cast them
         # to unicode so they appear like pure unicode instances for django
@@ -308,25 +305,10 @@ class SQLCompiler(NonrelCompiler):
                     value = value.name()
             else:
                 raise DatabaseError("%s fields cannot be keys on GAE" % db_type)
-#        TODO: Use long in order to simulate decimal?
-#        elif isinstance(value, long):
-#        elif isinstance(value, Rating):
-#        elif isinstance(value, users.User):
-#        elif isinstance(value, BlobKey):
-#        elif isinstance(value, ByteString):
-#        TODO: convert GeoPt to a field used by geo-django (or some other geo
-#        app for django)
-#        elif isinstance(value, GeoPt):
-#        elif isinstance(value, IM):
-
-        # here we have to check the db_type because GAE always stores datetime
-        # instances
         elif db_type == 'date' and isinstance(value, datetime.datetime):
             value = value.date()
         elif db_type == 'time' and isinstance(value, datetime.datetime):
             value = value.time()
-        elif db_type == 'datetime' and isinstance(value, datetime.datetime):
-            value = value
         return value
 
     def convert_value_for_db(self, db_type, value):
@@ -336,9 +318,10 @@ class SQLCompiler(NonrelCompiler):
             value = str(value)
         elif isinstance(value, (list, tuple)) and len(value) and \
                 db_type.startswith('ListField:'):
-            db_sub_type = db_type.split('ListField:')[1]
-            for i, val in enumerate(value):
-                value[i] = self.convert_value_for_db(db_sub_type, val)
+            db_sub_type = db_type.split(':', 1)[1]
+            value = [self.convert_value_for_db(db_sub_type, subvalue)
+                     for subvalue in value]
+
         if db_type == 'gae_key':
             return value
         elif db_type == 'longtext':
@@ -363,7 +346,7 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
         kwds = {}
         gae_data = {}
         for column, value in data.items():
-            if column == self.query.get_meta().pk.name:
+            if column == self.query.get_meta().pk.column:
                 if isinstance(value, basestring):
                     kwds['name'] = value
                 else:
