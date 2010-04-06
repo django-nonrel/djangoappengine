@@ -16,7 +16,7 @@ from google.appengine.api.datastore_types import Text, Category, Email, Link, \
     Rating, BlobKey
 
 from djangotoolbox.db.basecompiler import NonrelQuery, NonrelCompiler, \
-    NonrelInsertCompiler, NonrelDeleteCompiler
+    NonrelInsertCompiler, NonrelUpdateCompiler, NonrelDeleteCompiler
 
 # Valid query types (a dictionary is used for speedy lookups).
 OPERATORS_MAP = {
@@ -108,13 +108,11 @@ class GAEQuery(NonrelQuery):
         self.ordering = ordering
         gae_ordering = []
         for order in self.ordering:
-            if order == '?':
-                raise Error("Randomized ordering isn't supported on App Engine")
             if order.startswith('-'):
                 order, direction = order[1:], Query.DESCENDING
             else:
                 direction = Query.ASCENDING
-            if order in (self.query.get_meta().pk.column, 'pk'):
+            if order == self.query.get_meta().pk.column:
                 order = '__key__'
             gae_ordering.append((order, direction))
         self.gae_query.Order(*gae_ordering)
@@ -363,10 +361,8 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
         key = Put(entity)
         return key.id_or_name()
 
-class SQLUpdateCompiler(SQLCompiler):
-    def execute_sql(self, result_type=MULTI):
-        # TODO: Implement me
-        raise NotImplementedError('No updates')
+class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
+    pass
 
 class SQLDeleteCompiler(NonrelDeleteCompiler, SQLCompiler):
     pass
