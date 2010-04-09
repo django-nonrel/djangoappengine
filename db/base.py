@@ -66,7 +66,7 @@ class DatabaseFeatures(NonrelDatabaseFeatures):
     pass
 
 class DatabaseOperations(NonrelDatabaseOperations):
-    compiler_module = 'djangoappengine.db.compiler'
+    compiler_module = __name__.rsplit('.', 1)[0] + '.compiler'
 
 class DatabaseClient(NonrelDatabaseClient):
     pass
