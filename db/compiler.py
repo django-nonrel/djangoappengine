@@ -61,7 +61,7 @@ class GAEQuery(NonrelQuery):
     def __init__(self, compiler, fields):
         super(GAEQuery, self).__init__(compiler, fields)
         self.inequality_field = None
-        self.pk_filters = []
+        self.pk_filters = None
         pks_only = False
         if len(fields) == 1 and fields[0].primary_key:
             pks_only = True
@@ -75,7 +75,7 @@ class GAEQuery(NonrelQuery):
     @safe_call
     def fetch(self, low_mark, high_mark):
         query = self.gae_query
-        if self.pk_filters:
+        if self.pk_filters is not None:
             results = self.get_matching_pk(low_mark, high_mark)
         else:
             if high_mark is None:
@@ -91,17 +91,18 @@ class GAEQuery(NonrelQuery):
 
     @safe_call
     def count(self, limit=None):
-        if self.pk_filters:
+        if self.pk_filters is not None:
             return len(self.get_matching_pk(0, limit))
         return self.gae_query.Count(limit)
 
     @safe_call
     def delete(self):
-        if self.pk_filters:
+        if self.pk_filters is not None:
             keys = [key for key in self.pk_filters if key is not None]
         else:
             keys = self.fetch()
-        Delete(keys)
+        if keys:
+            Delete(keys)
 
     @safe_call
     def order_by(self, ordering):
@@ -127,7 +128,7 @@ class GAEQuery(NonrelQuery):
             column = '__key__'
             db_table = self.query.get_meta().db_table
             if lookup_type in ('exact', 'in'):
-                if self.pk_filters:
+                if self.pk_filters is not None:
                     raise DatabaseError("You can't apply multiple AND filters "
                                         "on the primary key. "
                                         "Did you mean __in=[...]?")
