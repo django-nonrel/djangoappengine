@@ -121,8 +121,6 @@ class GAEQuery(NonrelQuery):
     # This function is used by the default add_filters() implementation
     @safe_call
     def add_filter(self, column, lookup_type, negated, db_type, value):
-        query = self.gae_query
-
         # Emulated/converted lookups
         if column == self.query.get_meta().pk.column:
             column = '__key__'
@@ -161,7 +159,6 @@ class GAEQuery(NonrelQuery):
                     value[1] = create_key(db_table, value[1])
                 else:
                     value = create_key(db_table, value)
-
         if lookup_type not in OPERATORS_MAP:
             raise DatabaseError("Lookup type %r isn't supported" % lookup_type)
 
@@ -185,10 +182,7 @@ class GAEQuery(NonrelQuery):
                     "columns (here: %r and %r)" % (self.inequality_field, column))
             self.inequality_field = column
         elif lookup_type == 'startswith':
-            op = '>='
-            query["%s %s" % (column, op)] = self.convert_value_for_db(
-                db_type, value)
-            op = '<='
+            self._add_filter(column, '>=', db_type, value)
             if isinstance(value, str):
                 value = value.decode('utf8')
             if isinstance(value, Key):
@@ -199,23 +193,30 @@ class GAEQuery(NonrelQuery):
                 value = Key.from_path(*value)
             else:
                 value += u'\ufffd'
-            query["%s %s" % (column, op)] = self.convert_value_for_db(
-                db_type, value)
+            self._add_filter(column, '<=', db_type, value)
             return
         elif lookup_type in ('range', 'year'):
-            op = '>='
-            query["%s %s" % (column, op)] = self.convert_value_for_db(
-                db_type, value[0])
+            self._add_filter(column, '>=', db_type, value[0])
             op = '<=' if lookup_type == 'range' else '<'
-            query["%s %s" % (column, op)] = self.convert_value_for_db(
-                db_type, value[1])
+            self._add_filter(column, op, db_type, value[1])
             return
         else:
             op = OPERATORS_MAP[lookup_type]
 
-        query["%s %s" % (column, op)] = self.convert_value_for_db(db_type,
-            value)
+        self._add_filter(column, op, db_type, value)
 
+    def _add_filter(self, column, op, db_type, value):
+        query = self.gae_query
+        key = '%s %s' % (column, op)
+        value = self.convert_value_for_db(db_type, value)
+        if key in query:
+            existing_value = query[key]
+            if isinstance(existing_value, list):
+                existing_value.append(value)
+            else:
+                query[key] = [existing_value, value]
+        else:
+            query[key] = value
     # ----------------------------------------------
     # Internal API
     # ----------------------------------------------
