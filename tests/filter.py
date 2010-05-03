@@ -175,6 +175,14 @@ class FilterTest(TestCase):
         self.assertEquals(FieldsWithOptionsModel.objects.filter(
             floating_point__isnull=True).count(), 1)
 
+        self.assertEquals(FieldsWithOptionsModel.objects.filter(
+            foreign_key=None).count(), 1)
+
+        # this filter will not work because of the way how django setups joins
+        # (it uses left outer joins if checked against isnull
+#        self.assertEquals(FieldsWithOptionsModel.objects.filter(
+#            foreign_key__isnull=True).count(), 1)
+
 
     def test_exclude(self):
         self.assertEquals([entity.email for entity in
