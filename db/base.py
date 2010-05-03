@@ -68,6 +68,10 @@ class DatabaseFeatures(NonrelDatabaseFeatures):
 class DatabaseOperations(NonrelDatabaseOperations):
     compiler_module = __name__.rsplit('.', 1)[0] + '.compiler'
 
+    def sql_flush(self, style, tables, sequences):
+        self.connection.flush()
+        return []
+
 class DatabaseClient(NonrelDatabaseClient):
     pass
 
@@ -80,8 +84,8 @@ class DatabaseIntrospection(NonrelDatabaseIntrospection):
 class DatabaseWrapper(NonrelDatabaseWrapper):
     def __init__(self, *args, **kwds):
         super(DatabaseWrapper, self).__init__(*args, **kwds)
-        self.features = DatabaseFeatures()
-        self.ops = DatabaseOperations()
+        self.features = DatabaseFeatures(self)
+        self.ops = DatabaseOperations(self)
         self.client = DatabaseClient(self)
         self.creation = DatabaseCreation(self)
         self.validation = DatabaseValidation(self)
