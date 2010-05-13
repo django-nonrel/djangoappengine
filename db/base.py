@@ -5,6 +5,7 @@ from djangotoolbox.db.base import NonrelDatabaseFeatures, \
     NonrelDatabaseOperations, NonrelDatabaseWrapper, NonrelDatabaseClient, \
     NonrelDatabaseValidation, NonrelDatabaseIntrospection
 import logging, os
+from django.db.backends.util import format_number
 
 def auth_func():
     import getpass
@@ -67,6 +68,29 @@ class DatabaseFeatures(NonrelDatabaseFeatures):
 
 class DatabaseOperations(NonrelDatabaseOperations):
     compiler_module = __name__.rsplit('.', 1)[0] + '.compiler'
+
+    DEFAULT_MAX_DIGITS = 16
+    def value_to_db_decimal(self, value, max_digits, decimal_places):
+        if value is None: 
+            return None
+        sign = value < 0 and u'-' or u''
+        if sign: 
+            value = abs(value)
+        if max_digits is None: 
+            max_digits = self.DEFAULT_MAX_DIGITS
+
+        if decimal_places is None:
+            value = unicode(value)
+        else:
+            value = format_number(value, max_digits, decimal_places)
+        decimal_places = decimal_places or 0
+        n = value.find('.')
+
+        if n < 0:
+            n = len(value)
+        if n < max_digits - decimal_places:
+            value = u"0" * (max_digits - decimal_places - n) + value
+        return sign + value
 
     def sql_flush(self, style, tables, sequences):
         self.connection.flush()

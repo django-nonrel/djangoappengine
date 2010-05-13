@@ -70,3 +70,6 @@ class OrderedModel(models.Model):
 
     class Meta:
         ordering = ('-priority',)
+
+class DecimalModel(models.Model):
+  decimal = models.DecimalField(max_digits=9, decimal_places=2)

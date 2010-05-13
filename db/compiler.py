@@ -18,6 +18,8 @@ from google.appengine.api.datastore_types import Text, Category, Email, Link, \
 from djangotoolbox.db.basecompiler import NonrelQuery, NonrelCompiler, \
     NonrelInsertCompiler, NonrelUpdateCompiler, NonrelDeleteCompiler
 
+import decimal
+
 # Valid query types (a dictionary is used for speedy lookups).
 OPERATORS_MAP = {
     'exact': '=',
@@ -277,7 +279,9 @@ class SQLCompiler(NonrelCompiler):
 
         # the following GAE database types are all unicode subclasses, cast them
         # to unicode so they appear like pure unicode instances for django
-        if isinstance(value, (Category, Email, Link, PhoneNumber, PostalAddress,
+        if isinstance(value, basestring) and value and db_type.startswith('decimal'):
+            value = decimal.Decimal(value)
+        elif isinstance(value, (Category, Email, Link, PhoneNumber, PostalAddress,
                 Text, unicode)):
             value = unicode(value)
         elif isinstance(value, Blob):
@@ -321,6 +325,8 @@ class SQLCompiler(NonrelCompiler):
             db_sub_type = db_type.split(':', 1)[1]
             value = [self.convert_value_for_db(db_sub_type, subvalue)
                      for subvalue in value]
+        elif isinstance(value, decimal.Decimal) and db_type.startswith("decimal:"):
+            value = self.connection.ops.value_to_db_decimal(value, *eval(db_type[8:]))
 
         if db_type == 'gae_key':
             return value
