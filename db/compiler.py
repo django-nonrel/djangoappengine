@@ -219,6 +219,7 @@ class GAEQuery(NonrelQuery):
                 query[key] = [existing_value, value]
         else:
             query[key] = value
+
     # ----------------------------------------------
     # Internal API
     # ----------------------------------------------
