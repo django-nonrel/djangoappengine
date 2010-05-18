@@ -197,6 +197,11 @@ class FilterTest(TestCase):
                             foreign_key__gt=ordered_instance)]),
                             ['app-engine@scholardocs.com', 'sharingan@uchias.com',])
 
+    def test_exclude_pk(self):
+        self.assertEquals([entity.pk for entity in
+                           OrderedModel.objects.exclude(pk__in=[2, 3])
+                           .order_by('pk')],
+                          [1, 4])
 
     def test_chained_filter(self):
         # additionally tests count :)
@@ -298,6 +303,21 @@ class FilterTest(TestCase):
                             email__in=['app-engine@scholardocs.com',
                             'rasengan@naruto.com'])], ['app-engine@scholardocs.com',
                             'rasengan@naruto.com'])
+
+    def test_in(self):
+        self.assertEquals([entity.email for entity in
+                           FieldsWithOptionsModel.objects.filter(
+                           floating_point__in=[5.3, 2.6, 1.58]).filter(
+                           integer__in=[1, 5, 9])],
+                          ['app-engine@scholardocs.com', 'rasengan@naruto.com'])
+
+    def test_in_with_pk_in(self):
+        self.assertEquals([entity.email for entity in
+                           FieldsWithOptionsModel.objects.filter(
+                           floating_point__in=[5.3, 2.6, 1.58]).filter(
+                           email__in=['app-engine@scholardocs.com',
+                                      'rasengan@naruto.com'])],
+                          ['app-engine@scholardocs.com', 'rasengan@naruto.com'])
 
     def test_values(self):
         # test values()
