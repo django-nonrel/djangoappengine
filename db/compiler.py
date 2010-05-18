@@ -64,6 +64,7 @@ class GAEQuery(NonrelQuery):
         self.inequality_field = None
         self.pk_filters = None
         self.excluded_pks = ()
+        self.has_negated_exact_filter = False
         self.ordering = ()
         self.gae_ordering = []
         pks_only = False
@@ -187,6 +188,14 @@ class GAEQuery(NonrelQuery):
             else:
                 op = '='
             value = None
+        elif negated and lookup_type == 'exact':
+            if self.has_negated_exact_filter:
+                raise DatabaseError("You can't exclude more than one __exact "
+                                    "filter")
+            self.has_negated_exact_filter = True
+            self._combine_filters(column, db_type,
+                                  (('<', value), ('>', value)))
+            return
         elif negated:
             try:
                 op = NEGATION_MAP[lookup_type]
@@ -201,17 +210,8 @@ class GAEQuery(NonrelQuery):
             if len(self.gae_query) * len(value) > 30:
                 raise DatabaseError("You can't query against more than "
                                     "30 __in filter value combinations")
-            gae_query = self.gae_query
-            combined = []
-            values = [self.convert_value_for_db(db_type, v) for v in value]
-            for query in gae_query:
-                for value in values:
-                    self.gae_query = [Query(self.db_table,
-                                            keys_only=self.pks_only)]
-                    self.gae_query[0].update(query)
-                    self._add_filter(column, '=', db_type, value)
-                    combined.append(self.gae_query[0])
-            self.gae_query = combined
+            op_values = [('=', v) for v in value]
+            self._combine_filters(column, db_type, op_values)
             return
         elif lookup_type == 'startswith':
             self._add_filter(column, '>=', db_type, value)
@@ -237,6 +237,9 @@ class GAEQuery(NonrelQuery):
 
         self._add_filter(column, op, db_type, value)
 
+    # ----------------------------------------------
+    # Internal API
+    # ----------------------------------------------
     def _add_filter(self, column, op, db_type, value):
         for query in self.gae_query:
             key = '%s %s' % (column, op)
@@ -250,9 +253,18 @@ class GAEQuery(NonrelQuery):
             else:
                 query[key] = value
 
-    # ----------------------------------------------
-    # Internal API
-    # ----------------------------------------------
+    def _combine_filters(self, column, db_type, op_values):
+        gae_query = self.gae_query
+        combined = []
+        for query in gae_query:
+            for op, value in op_values:
+                self.gae_query = [Query(self.db_table,
+                                        keys_only=self.pks_only)]
+                self.gae_query[0].update(query)
+                self._add_filter(column, op, db_type, value)
+                combined.append(self.gae_query[0])
+        self.gae_query = combined
+
     def _make_entity(self, entity):
         if isinstance(entity, Key):
             key = entity

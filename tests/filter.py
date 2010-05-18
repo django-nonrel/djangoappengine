@@ -253,11 +253,6 @@ class FilterTest(TestCase):
             FieldsWithOptionsModel.objects.all().exclude(
                 floating_point__lt=9.1).order_by('email')[0])
 
-        # test exception on inequality filter.
-        # TODO: support them for App Engine
-        self.assertRaises(DatabaseError, FieldsWithOptionsModel.objects.exclude(
-                            floating_point=9.1).order_by('floating_point').get)
-
         # TODO: Maybe check all possible exceptions
 
     def test_slicing(self):
@@ -318,6 +313,13 @@ class FilterTest(TestCase):
                            email__in=['app-engine@scholardocs.com',
                                       'rasengan@naruto.com'])],
                           ['app-engine@scholardocs.com', 'rasengan@naruto.com'])
+
+    def test_inequality(self):
+        self.assertEquals([entity.email for entity in
+                           FieldsWithOptionsModel.objects.exclude(
+                           floating_point=5.3).filter(
+                           integer__in=[1, 5, 9])],
+                          ['rasengan@naruto.com', 'rinnengan@sage.de'])
 
     def test_values(self):
         # test values()
