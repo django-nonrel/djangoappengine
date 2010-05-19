@@ -73,4 +73,4 @@ class OrderedModel(models.Model):
         ordering = ('-priority',)
 
 class DecimalModel(models.Model):
-  decimal = models.DecimalField(max_digits=9, decimal_places=2)
+    decimal = models.DecimalField(max_digits=9, decimal_places=2)
