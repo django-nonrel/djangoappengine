@@ -6,6 +6,12 @@ COMMON_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 PROJECT_DIR = os.path.dirname(COMMON_DIR)
 if os.path.basename(COMMON_DIR) == 'common-apps':
     MAIN_DIRS = (PROJECT_DIR, COMMON_DIR)
+    print >>sys.stderr, '!!!!!!!!!!!!!!!!!!!!!!!!!!\n' \
+                        'Deprecation warning: the "common-apps" folder ' \
+                        'is deprecated. Please move all modules from ' \
+                        'there into the main project folder and remove ' \
+                        'the "common-apps" folder.\n' \
+                        '!!!!!!!!!!!!!!!!!!!!!!!!!!\n'
 else:
     PROJECT_DIR = COMMON_DIR
     MAIN_DIRS = (PROJECT_DIR,)
