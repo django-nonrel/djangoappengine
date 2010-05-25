@@ -42,8 +42,8 @@ def setup_env():
             if path.endswith('google_appengine'):
                 paths.append(path)
         if os.name in ('nt', 'dos'):
-            prefix = '%(PROGRAMFILES)s' % os.environ
-            paths.append(prefix + r'\Google\google_appengine')
+            path = r'%(PROGRAMFILES)s\Google\google_appengine' % os.environ
+            paths.append(path)
         # Loop through all possible paths and look for the SDK dir.
         SDK_PATH = None
         for sdk_path in paths:

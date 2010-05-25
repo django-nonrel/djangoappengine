@@ -81,6 +81,8 @@ class GAEQuery(NonrelQuery):
     @safe_call
     def fetch(self, low_mark, high_mark):
         query = self._build_query()
+        if self.excluded_pks and high_mark is not None:
+            high_mark += len(self.excluded_pks)
         if self.pk_filters is not None:
             results = self.get_matching_pk(low_mark, high_mark)
         else:
@@ -108,8 +110,7 @@ class GAEQuery(NonrelQuery):
         if self.pk_filters is not None:
             return len(self.get_matching_pk(0, limit))
         if self.excluded_pks:
-            raise DatabaseError("Counting with excluded primary keys is not "
-                                "supported.")
+            return len(list(self.fetch(0, 300)))
         return self._build_query().Count(limit)
 
     @safe_call
@@ -284,13 +285,12 @@ class GAEQuery(NonrelQuery):
         return query
 
     def get_matching_pk(self, low_mark=0, high_mark=None):
-        pk_filters = [key for key in self.pk_filters if key is not None]
-        if not pk_filters:
+        if not self.pk_filters:
             return []
 
-        results = [result for result in Get(pk_filters)
-                   if result is not None
-                       and self.matches_filters(result)]
+        results = [result for result in Get(self.pk_filters)
+                   if result is not None and
+                       self.matches_filters(result)]
         if self.ordering:
             results.sort(cmp=self.order_pk_filtered)
         if high_mark is not None and high_mark < len(results) - 1:
