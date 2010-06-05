@@ -10,7 +10,7 @@ class DatabaseCreation(NonrelDatabaseCreation):
 #    data_types = NonrelDatabaseCreation.data_types
 #    data_types.update({
 #        'GAEKeyField': 'gae_key',
-#    }
+#    })
 
     def create_test_db(self, *args, **kw):
         """Destroys the test datastore. A new store will be recreated on demand"""
