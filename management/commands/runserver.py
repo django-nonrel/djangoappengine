@@ -63,9 +63,9 @@ def start_dev_appserver(argv):
     # Pass the application specific datastore location to the server.
     p = connection._get_paths()
     if '--datastore_path' not in args:
-        args.extend(["--datastore_path", p[0]])
+        args.extend(['--datastore_path', p[0]])
     if '--history_path' not in args:
-        args.extend(["--history_path", p[1]])
+        args.extend(['--history_path', p[1]])
 
     # Reset logging level to INFO as dev_appserver will spew tons of debug logs
     logging.getLogger().setLevel(logging.INFO)

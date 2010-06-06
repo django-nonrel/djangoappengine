@@ -37,7 +37,7 @@ def setup_env():
                  os.path.join(COMMON_DIR, '.google_appengine'),
                  '/usr/local/google_appengine',
                  '/Applications/GoogleAppEngineLauncher.app/Contents/Resources/GoogleAppEngine-default.bundle/Contents/Resources/google_appengine']
-        for path in os.environ.get('PATH', '').replace(';', ':').split(':'):
+        for path in os.environ.get('PATH', '').split(os.pathsep):
             path = path.rstrip(os.sep)
             if path.endswith('google_appengine'):
                 paths.append(path)
