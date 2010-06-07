@@ -75,6 +75,23 @@ def setup_env():
     setup_project()
     setup_logging()
 
+    # Patch Django to support loading management commands from zip files
+    from django.core import management
+    management.find_commands = find_commands
+
+def find_commands(management_dir):
+    """
+    Given a path to a management directory, returns a list of all the command
+    names that are available.
+    This version works for django deployments which are file based or
+    contained in a ZIP (in sys.path).
+
+    Returns an empty list if no commands are defined.
+    """
+    import pkgutil
+    return [modname for importer, modname, ispkg in pkgutil.iter_modules(
+                [os.path.join(management_dir, 'commands')]) if not ispkg]
+
 def setup_threading():
     # XXX: GAE's threading.local doesn't work correctly with subclassing
     try:
