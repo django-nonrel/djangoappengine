@@ -30,10 +30,13 @@ def get_datastore_paths(options):
     datastore_path = options.get('datastore_path',
                                  dev_appserver_main.DEFAULT_ARGS['datastore_path'].replace(
                                  'dev_appserver', 'django_%s' % appid))
+    blobstore_path = options.get('blobstore_path',
+                                 dev_appserver_main.DEFAULT_ARGS['blobstore_path'].replace(
+                                 'dev_appserver', 'django_%s' % appid))
     history_path = options.get('history_path',
                                dev_appserver_main.DEFAULT_ARGS['history_path'].replace(
                                'dev_appserver', 'django_%s' % appid))
-    return datastore_path, history_path
+    return datastore_path, blobstore_path, history_path
 
 def get_test_datastore_paths(inmemory=True):
     """Returns a tuple with the path to the test datastore and history file.
@@ -47,14 +50,15 @@ def get_test_datastore_paths(inmemory=True):
     """
     if inmemory:
         return None, None
-    datastore_path, history_path = get_datastore_paths()
+    datastore_path, blobstore_path, history_path = get_datastore_paths()
     datastore_path = datastore_path.replace('.datastore', '.testdatastore')
+    blobstore_path = blobstore_path.replace('.blobstore', '.testblobstore')
     history_path = history_path.replace('.datastore', '.testdatastore')
-    return datastore_path, history_path
+    return datastore_path, blobstore, history_path
 
-def destroy_datastore(datastore_path, history_path):
+def destroy_datastore(*args):
     """Destroys the appengine datastore at the specified paths."""
-    for path in (datastore_path, history_path):
+    for path in args:
         if not path:
             continue
         try:
@@ -137,7 +141,7 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
         if not have_appserver:
             from google.appengine.tools import dev_appserver_main
             args = dev_appserver_main.DEFAULT_ARGS.copy()
-            args['datastore_path'], args['history_path'] = self._get_paths()
+            args['datastore_path'], args['blobstore_path'], args['history_path'] = self._get_paths()
             from google.appengine.tools import dev_appserver
             dev_appserver.SetupStubs(appid, **args)
         # If we're supposed to set up the remote_api, do that now.

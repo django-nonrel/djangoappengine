@@ -22,8 +22,12 @@ if on_production_server:
 else:
     EMAIL_BACKEND = 'djangoappengine.mail.EmailBackend'
 
+DEFAULT_FILE_STORAGE = 'djangoappengine.storage.BlobstoreStorage'
+DEFAULT_FILE_UPLOAD_BACKEND = 'djangoappengine.storage.prepare_upload'
+DEFAULT_FILE_SERVING_BACKEND = 'djangoappengine.storage.serve_file'
 FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
 FILE_UPLOAD_HANDLERS = (
+    'djangoappengine.storage.BlobstoreFileUploadHandler',
     'django.core.files.uploadhandler.MemoryFileUploadHandler',
 )
 
