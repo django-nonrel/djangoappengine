@@ -49,10 +49,10 @@ class BlobstoreStorage(Storage):
             data = content.file.blobstore_info
         elif hasattr(content, 'blobstore_info'):
             data = content.blobstore_info
-        elif hasattr(content, 'chunks'):
-            data = ''.join(chunk for chunk in content.chunks())
         else:
-            data = content.read()
+            raise ValueError("The App Engine storage backend only supports "
+                             "BlobstoreFile instances or File instances "
+                             "whose file attribute is a BlobstoreFile.")
 
         if isinstance(data, (BlobInfo, BlobKey)):
             # We change the file name to the BlobKey's str() value
@@ -116,9 +116,8 @@ class BlobstoreFileUploadHandler(FileUploadHandler):
 
     def new_file(self, *args, **kwargs):
         super(BlobstoreFileUploadHandler, self).new_file(*args, **kwargs)
-        access_type = self.content_type_extra.get('access-type')
         blobkey = self.content_type_extra.get('blob-key')
-        self.active = access_type == 'X-AppEngine-BlobKey'
+        self.active = blobkey is not None
         if self.active:
             self.blobkey = BlobKey(blobkey)
             raise StopFutureHandlers()
