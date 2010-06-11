@@ -18,7 +18,7 @@ from django.utils.encoding import smart_str, force_unicode
 from google.appengine.ext.blobstore import BlobInfo, BlobKey, delete, \
     create_upload_url, BLOB_KEY_HEADER
 
-def prepare_upload(url):
+def prepare_upload(request, url):
     return create_upload_url(url)
 
 def serve_file(request, file, save_as, content_type):
