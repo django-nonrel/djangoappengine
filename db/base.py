@@ -49,12 +49,12 @@ def get_test_datastore_paths(inmemory=True):
       (datastore_path, history_path)
     """
     if inmemory:
-        return None, None
+        return None, None, None
     datastore_path, blobstore_path, history_path = get_datastore_paths()
     datastore_path = datastore_path.replace('.datastore', '.testdatastore')
     blobstore_path = blobstore_path.replace('.blobstore', '.testblobstore')
     history_path = history_path.replace('.datastore', '.testdatastore')
-    return datastore_path, blobstore, history_path
+    return datastore_path, blobstore_path, history_path
 
 def destroy_datastore(*args):
     """Destroys the appengine datastore at the specified paths."""
