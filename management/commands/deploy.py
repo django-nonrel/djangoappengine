@@ -21,6 +21,8 @@
 import sys
 import logging
 
+from django.conf import settings
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
 def run_appcfg(argv):
@@ -65,4 +67,6 @@ class Command(BaseCommand):
     args = '[any appcfg.py options]'
 
     def run_from_argv(self, argv):
+        if 'mediagenerator' in settings.INSTALLED_APPS:
+            call_command('generatemedia')
         run_appcfg(argv)

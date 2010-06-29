@@ -19,7 +19,7 @@ from google.appengine.ext.blobstore import BlobInfo, BlobKey, delete, \
     create_upload_url, BLOB_KEY_HEADER
 
 def prepare_upload(request, url, **kwargs):
-    return create_upload_url(url)
+    return create_upload_url(url), {}
 
 def serve_file(request, file, save_as, content_type, **kwargs):
     if hasattr(file, 'file') and hasattr(file.file, 'blobstore_info'):
