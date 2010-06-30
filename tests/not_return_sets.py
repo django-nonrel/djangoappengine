@@ -88,3 +88,4 @@ class NonReturnSetsTest(TestCase):
         self.assertTrue(not entity.keys.exists())
         entity.keys = [new_foreign_key, new_foreign_key]
         self.assertEquals(entity.keys.count(), 1)
+        self.assertEquals(entity.keys.all()[0].integer, 3)
