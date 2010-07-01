@@ -121,12 +121,17 @@ def setup_project():
         global env_ext
         env_ext['HOME'] = PROJECT_DIR
 
+    # Get the subprocess module into the dev_appserver sandbox.
+    # This module is just too important for development.
+    # The second part of this hack is in runserver.py which adds
+    # important environment variables like PATH etc.
     if not on_production_server:
-        from google.appengine import dist
-        if 'subprocess' in dist.__all__:
-            dist.__all__.remove('subprocess')
-        from google.appengine.tools.dev_appserver import os as clean_os
-        os.fdopen = clean_os.fdopen
+        try:
+            from google.appengine.api.mail_stub import subprocess
+            sys.modules['subprocess'] = subprocess
+        except ImportError:
+            import logging
+            logging.warn('Could not add the subprocess module to the sandbox.')
 
     os.environ.update(env_ext)
 
