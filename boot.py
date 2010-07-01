@@ -115,11 +115,18 @@ def setup_logging():
         logging.getLogger().setLevel(logging.INFO)
 
 def setup_project():
-    from .utils import have_appserver
+    from .utils import have_appserver, on_production_server
     if have_appserver:
         # This fixes a pwd import bug for os.path.expanduser()
         global env_ext
         env_ext['HOME'] = PROJECT_DIR
+
+    if not on_production_server:
+        from google.appengine import dist
+        if 'subprocess' in dist.__all__:
+            dist.__all__.remove('subprocess')
+        from google.appengine.tools.dev_appserver import os as clean_os
+        os.fdopen = clean_os.fdopen
 
     os.environ.update(env_ext)
 
