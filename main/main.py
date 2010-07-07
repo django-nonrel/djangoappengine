@@ -15,8 +15,8 @@ if 'django' in sys.modules and sys.modules['django'].VERSION < (1, 2):
         del sys.modules[k]
 
 from djangoappengine import boot
-boot.setup_threading()
 boot.setup_project()
+boot.setup_threading()
 boot.setup_logging()
 
 import django.core.handlers.wsgi
