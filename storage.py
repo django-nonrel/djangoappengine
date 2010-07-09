@@ -16,7 +16,7 @@ from django.http import HttpResponse
 from django.utils.encoding import smart_str, force_unicode
 
 from google.appengine.ext.blobstore import BlobInfo, BlobKey, delete, \
-    create_upload_url, BLOB_KEY_HEADER
+    create_upload_url, BLOB_KEY_HEADER, BLOB_RANGE_HEADER
 
 def prepare_upload(request, url, **kwargs):
     return create_upload_url(url), {}
@@ -31,6 +31,10 @@ def serve_file(request, file, save_as, content_type, **kwargs):
                          "Google App Engine Blobstore.")
     response = HttpResponse(content_type=content_type)
     response[BLOB_KEY_HEADER] = str(blobkey)
+    response['Accept-Ranges'] = 'bytes'
+    http_range = request.META.get('HTTP_RANGE')
+    if http_range is not None:
+        response[BLOB_RANGE_HEADER] = http_range
     if save_as:
         response['Content-Disposition'] = smart_str(u'attachment; filename=%s' % save_as)
     if file.size is not None:
