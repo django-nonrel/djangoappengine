@@ -22,6 +22,7 @@ class FieldsWithoutOptionsModel(models.Model):
 #    file = models.FileField()
 #    file_path = models.FilePathField()
     long_text = models.TextField()
+    indexed_text = models.TextField()
     xml = models.XMLField()
     integer = models.IntegerField()
     small_integer = models.SmallIntegerField()
