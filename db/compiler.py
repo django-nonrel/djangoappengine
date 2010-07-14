@@ -1,3 +1,5 @@
+from .db_settings import get_indexes
+
 import datetime
 import sys
 
@@ -400,10 +402,15 @@ class SQLCompiler(NonrelCompiler):
 class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
     @safe_call
     def insert(self, data, return_id=False):
-        kwds = {}
         gae_data = {}
+        opts = self.query.get_meta()
+        indexes = get_indexes().get(self.query.model, {})
+        unindexed_fields = indexes.get('unindexed', ())
+        unindexed_cols = [opts.get_field(name).column
+                          for name in unindexed_fields]
+        kwds = {'unindexed_properties': unindexed_cols}
         for column, value in data.items():
-            if column == self.query.get_meta().pk.column:
+            if column == opts.pk.column:
                 if isinstance(value, basestring):
                     kwds['name'] = value
                 else:

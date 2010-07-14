@@ -1,19 +1,15 @@
-from .db_settings import FIELD_INDEXES
+from .db_settings import get_indexes
 from djangotoolbox.db.creation import NonrelDatabaseCreation
 
-# TODO: add support for specifying index for non-string fields
 class StringType(object):
     def __init__(self, internal_type):
         self.internal_type = internal_type
 
     def __mod__(self, field):
-        app_label = field['model']._meta.app_label
-        name = field['model']._meta.object_name
-        path = '%s.%s.%s' % (app_label, name, field['name'])
-        index = FIELD_INDEXES.get(path)
-        if index is True:
+        indexes = get_indexes().get(field['model'], {})
+        if field['name'] in indexes.get('indexed', ()):
             return 'text'
-        elif index is False:
+        elif field['name'] in indexes.get('unindexed', ()):
             return 'longtext'
         return self.internal_type
 

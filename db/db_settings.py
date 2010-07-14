@@ -1,19 +1,20 @@
 from django.conf import settings
 from django.utils.importlib import import_module
 
-FIELD_INDEXES = {}
+_MODULE_NAMES = getattr(settings, 'GAE_SETTINGS_MODULES', ())
+
+FIELD_INDEXES = None
 
 # TODO: add support for eventual consistency setting on specific models
 
-def load_indexes():
-    index_modules = [app + '.db_settings_gae'
-                     for app in settings.INSTALLED_APPS]
-    index_modules.append('db_settings_gae')
-
-    for name in index_modules:
-        try:
-            FIELD_INDEXES.update(import_module(name).FIELD_INDEXES)
-        except (ImportError, AttributeError):
-            pass
-
-load_indexes()
+def get_indexes():
+    global FIELD_INDEXES
+    if FIELD_INDEXES is None:
+        field_indexes = {}
+        for name in _MODULE_NAMES:
+            try:
+                field_indexes.update(import_module(name).FIELD_INDEXES)
+            except (ImportError, AttributeError):
+                pass
+        FIELD_INDEXES = field_indexes
+    return FIELD_INDEXES

@@ -1,4 +1,5 @@
 from django.db import models
+from ..db.db_settings import get_indexes
 
 class EmailModel(models.Model):
     email = models.EmailField()
@@ -33,6 +34,8 @@ class FieldsWithoutOptionsModel(models.Model):
 #    one_to_one = models.OneToOneField()
 #    decimal = models.DecimalField() # can be None
 #    image = models.ImageField()
+
+get_indexes()[FieldsWithoutOptionsModel] = {'indexed': ('indexed_text',)}
 
 class FieldsWithOptionsModel(models.Model):
     # any type of unique (unique_data, ...) is not supported on GAE, instead you
