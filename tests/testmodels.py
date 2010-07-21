@@ -6,6 +6,8 @@ class EmailModel(models.Model):
 
 class DateTimeModel(models.Model):
     datetime = models.DateTimeField()
+    datetime_auto_now = models.DateTimeField(auto_now=True)
+    datetime_auto_now_add = models.DateTimeField(auto_now_add=True)
 
 class FieldsWithoutOptionsModel(models.Model):
     datetime = models.DateTimeField()

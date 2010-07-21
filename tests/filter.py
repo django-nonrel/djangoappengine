@@ -387,6 +387,22 @@ class FilterTest(TestCase):
                             datetime__year=2013).order_by('datetime')],
                             [datetime.datetime(2013, 7, 28, 22, 30, 20, 50),])
 
+    def test_auto_now(self):
+        time.sleep(0.1)
+        entity = DateTimeModel.objects.all()[0]
+        auto_now = entity.datetime_auto_now
+        entity.save()
+        entity = DateTimeModel.objects.get(pk=entity.pk)
+        self.assertNotEqual(auto_now, entity.datetime_auto_now)
+
+    def test_auto_now_add(self):
+        time.sleep(0.1)
+        entity = DateTimeModel.objects.all()[0]
+        auto_now_add = entity.datetime_auto_now_add
+        entity.save()
+        entity = DateTimeModel.objects.get(pk=entity.pk)
+        self.assertEqual(auto_now_add, entity.datetime_auto_now_add)
+
     def test_latest(self):
         self.assertEquals(FieldsWithOptionsModel.objects.latest('time').floating_point,
                             1.58)
