@@ -139,6 +139,10 @@ class GAEQuery(NonrelQuery):
     # This function is used by the default add_filters() implementation
     @safe_call
     def add_filter(self, column, lookup_type, negated, db_type, value):
+        if value in ([], ()):
+            self.pk_filters = []
+            return
+
         # Emulated/converted lookups
         if column == self.query.get_meta().pk.column:
             column = '__key__'
