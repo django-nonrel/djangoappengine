@@ -78,3 +78,6 @@ class OrderedModel(models.Model):
 
 class DecimalModel(models.Model):
     decimal = models.DecimalField(max_digits=9, decimal_places=2)
+
+class SelfReferenceModel(models.Model):
+    ref = models.ForeignKey('self', null=True)
