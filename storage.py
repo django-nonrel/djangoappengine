@@ -16,7 +16,7 @@ from django.http import HttpResponse
 from django.utils.encoding import smart_str, force_unicode
 
 from google.appengine.ext.blobstore import BlobInfo, BlobKey, delete, \
-    create_upload_url, BLOB_KEY_HEADER, BLOB_RANGE_HEADER
+    create_upload_url, BLOB_KEY_HEADER, BLOB_RANGE_HEADER, BlobReader
 
 def prepare_upload(request, url, **kwargs):
     return create_upload_url(url), {}
@@ -104,14 +104,14 @@ class BlobstoreFile(File):
     def size(self):
         return self.blobstore_info.size
 
-    def read(self, *args, **kwargs):
-        raise NotImplementedError()
-
     def write(self, content):
         raise NotImplementedError()
 
-    def close(self):
-        pass
+    @property
+    def file(self):
+        if not hasattr(self, '_file'):
+            self._file = BlobReader(self.blobstore_info.key())
+        return self._file
 
 class BlobstoreFileUploadHandler(FileUploadHandler):
     """
@@ -150,20 +150,20 @@ class BlobstoreUploadedFile(UploadedFile):
     """
     def __init__(self, blobinfo, charset):
         super(BlobstoreUploadedFile, self).__init__(
-            blobinfo, blobinfo.filename, blobinfo.content_type, blobinfo.size,
-            charset)
+            BlobReader(blobinfo.key()), blobinfo.filename,
+            blobinfo.content_type, blobinfo.size, charset)
         self.blobstore_info = blobinfo
 
     def open(self, mode=None):
         pass
 
-    def close(self):
-        pass
-
-    def chunks(self, chunk_size=None):
+    def chunks(self, chunk_size=1024*128):
         self.file.seek(0)
-        yield self.read()
+        while True:
+            content = self.read(chunk_size)
+            if not content:
+                break
+            yield content
 
-    def multiple_chunks(self, chunk_size=None):
-        # Since it's in memory, we'll never have multiple chunks.
-        return False
+    def multiple_chunks(self, chunk_size=1024*128):
+        return True
