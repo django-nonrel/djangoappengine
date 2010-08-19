@@ -1,5 +1,5 @@
-import base64
 from google.appengine.datastore.datastore_pb import CompiledCursor
+import base64
 
 def get_cursor(queryset):
     # Evaluate QuerySet
