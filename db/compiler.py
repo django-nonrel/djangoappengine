@@ -74,7 +74,10 @@ class GAEQuery(NonrelQuery):
             pks_only = True
         self.db_table = self.query.get_meta().db_table
         self.pks_only = pks_only
-        self.gae_query = [Query(self.db_table, keys_only=self.pks_only)]
+        start_cursor = getattr(self.query, '_gae_start_cursor', None)
+        end_cursor = getattr(self.query, '_gae_end_cursor', None)
+        self.gae_query = [Query(self.db_table, keys_only=self.pks_only,
+                                cursor=start_cursor, end_cursor=end_cursor)]
 
     # This is needed for debugging
     def __repr__(self):
@@ -83,6 +86,7 @@ class GAEQuery(NonrelQuery):
     @safe_call
     def fetch(self, low_mark, high_mark):
         query = self._build_query()
+        executed = False
         if self.excluded_pks and high_mark is not None:
             high_mark += len(self.excluded_pks)
         if self.pk_filters is not None:
@@ -93,8 +97,10 @@ class GAEQuery(NonrelQuery):
                 if low_mark:
                     kw['offset'] = low_mark
                 results = query.Run(**kw)
+                executed = True
             elif high_mark > low_mark:
                 results = query.Get(high_mark - low_mark, low_mark)
+                executed = True
             else:
                 results = ()
 
@@ -107,13 +113,19 @@ class GAEQuery(NonrelQuery):
                 continue
             yield self._make_entity(entity)
 
+        if executed and not isinstance(query, MultiQuery):
+            self.query._gae_cursor = query.GetCompiledCursor()
+
     @safe_call
     def count(self, limit=None):
         if self.pk_filters is not None:
             return len(self.get_matching_pk(0, limit))
         if self.excluded_pks:
-            return len(list(self.fetch(0, 300)))
-        return self._build_query().Count(limit)
+            return len(list(self.fetch(0, 2000)))
+        kw = {}
+        if limit is not None:
+            kw['limit'] = limit
+        return self._build_query().Count(**kw)
 
     @safe_call
     def delete(self):

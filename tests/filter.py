@@ -1,8 +1,10 @@
 from .testmodels import FieldsWithOptionsModel, EmailModel, DateTimeModel, OrderedModel
+from ..db.utils import get_cursor
 import datetime, time
 from django.test import TestCase
 from django.db.models import Q
 from django.db.utils import DatabaseError
+from djangoappengine.db.utils import set_cursor
 
 class FilterTest(TestCase):
     floats = [5.3, 2.6, 9.1, 1.58]
@@ -276,6 +278,20 @@ class FilterTest(TestCase):
                           FieldsWithOptionsModel.objects.all().order_by(
                             'email')[::2]],
                           ['app-engine@scholardocs.com', 'rinnengan@sage.de',])
+
+    def test_cursor(self):
+        results = list(FieldsWithOptionsModel.objects.all())
+        cursor = None
+        for item in results:
+            query = FieldsWithOptionsModel.objects.all()[:1]
+            if cursor is not None:
+                set_cursor(query, cursor)
+            next = query[0]
+            self.assertEqual(next.pk, item.pk)
+            cursor = get_cursor(query)
+        query = FieldsWithOptionsModel.objects.all()[:1]
+        set_cursor(query, cursor)
+        self.assertEqual(list(query), [])
 
     def test_Q_objects(self):
         self.assertEquals([entity.email for entity in
