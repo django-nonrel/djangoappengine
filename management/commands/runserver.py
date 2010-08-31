@@ -89,6 +89,13 @@ def start_dev_appserver(argv):
         logging.warn('Could not patch the default environment. '
                      'The subprocess module will not work correctly.')
 
+    # Allow to use the compiler module
+    try:
+        dev_appserver.HardenedModulesHook._WHITE_LIST_C_MODULES.append('parser')
+    except AttributeError:
+        logging.warn('Could not patch modules whitelist. '
+                     'The compiler and parser modules will not work.')
+
     # Append the current working directory to the arguments.
     dev_appserver_main.main([progname] + args + [os.getcwdu()])
 
