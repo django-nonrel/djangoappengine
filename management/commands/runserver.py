@@ -44,10 +44,7 @@ def start_dev_appserver(argv):
             try:
                 addr, port = addrport.split(":")
             except ValueError:
-                addr, port = None, addrport
-            if not port.isdigit():
-                print "Error: '%s' is not a valid port number." % port
-                sys.exit(1)
+                addr = addrport
         else:
             args.append(argv[2])
         args.extend(argv[3:])
