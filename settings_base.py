@@ -8,11 +8,6 @@ ROOT_URLCONF = 'urls'
 DATABASES = {
     'default': {
         'ENGINE': 'djangoappengine.db',
-        'NAME': '',
-        'USER': '',
-        'PASSWORD': '',
-        'HOST': '',
-        'PORT': '',
         'SUPPORTS_TRANSACTIONS': False,
     },
 }
