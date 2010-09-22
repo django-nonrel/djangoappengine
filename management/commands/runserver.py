@@ -44,10 +44,7 @@ def start_dev_appserver(argv):
             try:
                 addr, port = addrport.split(":")
             except ValueError:
-                addr, port = None, addrport
-            if not port.isdigit():
-                print "Error: '%s' is not a valid port number." % port
-                sys.exit(1)
+                addr = addrport
         else:
             args.append(argv[2])
         args.extend(argv[3:])
@@ -88,6 +85,13 @@ def start_dev_appserver(argv):
     except AttributeError:
         logging.warn('Could not patch the default environment. '
                      'The subprocess module will not work correctly.')
+
+    # Allow to use the compiler module
+    try:
+        dev_appserver.HardenedModulesHook._WHITE_LIST_C_MODULES.append('parser')
+    except AttributeError:
+        logging.warn('Could not patch modules whitelist. '
+                     'The compiler and parser modules will not work.')
 
     # Append the current working directory to the arguments.
     dev_appserver_main.main([progname] + args + [os.getcwdu()])
