@@ -76,26 +76,8 @@ def start_dev_appserver(argv):
     # Reset logging level to INFO as dev_appserver will spew tons of debug logs
     logging.getLogger().setLevel(logging.INFO)
 
-    # Allow to run subprocesses
-    from google.appengine.tools import dev_appserver
-    try:
-        env = dev_appserver.DEFAULT_ENV
-        dev_appserver.DEFAULT_ENV = os.environ.copy()
-        dev_appserver.DEFAULT_ENV.update(env)
-    except AttributeError:
-        logging.warn('Could not patch the default environment. '
-                     'The subprocess module will not work correctly.')
-
-    # Allow to use the compiler module
-    try:
-        dev_appserver.HardenedModulesHook._WHITE_LIST_C_MODULES.append('parser')
-    except AttributeError:
-        logging.warn('Could not patch modules whitelist. '
-                     'The compiler and parser modules will not work.')
-
     # Append the current working directory to the arguments.
     dev_appserver_main.main([progname] + args + [os.getcwdu()])
-
 
 class Command(BaseCommand):
     """Overrides the default Django runserver command.

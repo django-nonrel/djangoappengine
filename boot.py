@@ -1,4 +1,6 @@
-import os, sys
+import logging
+import os
+import sys
 
 # We allow a two-level project structure where your root folder contains
 # project-specific apps and the "common" subfolder contains common apps.
@@ -102,8 +104,6 @@ def setup_threading():
         pass
 
 def setup_logging():
-    import logging
-
     # Fix Python 2.6 logging module
     logging.logMultiprocessing = 0
 
@@ -123,9 +123,26 @@ def setup_project():
 
     # Get the subprocess module into the dev_appserver sandbox.
     # This module is just too important for development.
-    # The second part of this hack is in runserver.py which adds
-    # important environment variables like PATH etc.
-    if have_appserver and not on_production_server:
+    # Also add the compiler/parser module back and enable https connections
+    # (seem to be broken on Windows because the _ssl module is disallowed).
+    if not have_appserver:
+        from google.appengine.tools import dev_appserver
+        try:
+            env = dev_appserver.DEFAULT_ENV
+            dev_appserver.DEFAULT_ENV = os.environ.copy()
+            dev_appserver.DEFAULT_ENV.update(env)
+        except AttributeError:
+            logging.warn('Could not patch the default environment. '
+                         'The subprocess module will not work correctly.')
+
+        try:
+            dev_appserver.HardenedModulesHook._WHITE_LIST_C_MODULES.extend(
+                ('parser', '_ssl'))
+        except AttributeError:
+            logging.warn('Could not patch modules whitelist. '
+                         'The compiler and parser modules will not work and '
+                         'SSL support is disabled.')
+    elif not on_production_server:
         try:
             from google.appengine.api.mail_stub import subprocess
             sys.modules['subprocess'] = subprocess
@@ -137,7 +154,6 @@ def setup_project():
             old_builtin = frame.f_locals['old_builtin']
             subprocess.buffer = old_builtin['buffer']
         except Exception, e:
-            import logging
             logging.warn('Could not add the subprocess module to the sandbox: %s' % e)
 
     os.environ.update(env_ext)
