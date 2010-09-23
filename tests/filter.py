@@ -5,6 +5,8 @@ from django.test import TestCase
 from django.db.models import Q
 from django.db.utils import DatabaseError
 from djangoappengine.db.utils import set_cursor
+from djangoappengine.tests.testmodels import BlobModel
+from google.appengine.api.datastore import Get, Key
 
 class FilterTest(TestCase):
     floats = [5.3, 2.6, 9.1, 1.58]
@@ -157,15 +159,6 @@ class FilterTest(TestCase):
                           FieldsWithOptionsModel.objects.filter(
                           email='rinnengan@sage.de').order_by('email')],
                           ['rinnengan@sage.de'])
-
-        # test using exact
-        self.assertEquals(FieldsWithOptionsModel.objects.filter(
-                          email__exact='rinnengan@sage.de')[0].email,
-                          'rinnengan@sage.de')
-
-        self.assertEquals(FieldsWithOptionsModel.objects.filter(
-                           pk='app-engine@scholardocs.com')[0].email,
-                          'app-engine@scholardocs.com')
 
     def test_is_null(self):
         self.assertEquals(FieldsWithOptionsModel.objects.filter(
@@ -422,3 +415,12 @@ class FilterTest(TestCase):
     def test_latest(self):
         self.assertEquals(FieldsWithOptionsModel.objects.latest('time').floating_point,
                             1.58)
+
+    def test_blob(self):
+        x = BlobModel(data='lalala')
+        x.full_clean()
+        x.save()
+        e = Get(Key.from_path(BlobModel._meta.db_table, x.pk))
+        self.assertEqual(e['data'], x.data)
+        x = BlobModel.objects.all()[0]
+        self.assertEqual(e['data'], x.data)
