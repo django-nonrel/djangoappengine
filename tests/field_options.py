@@ -19,20 +19,17 @@ class FieldOptionsTest(TestCase):
 
         time = datetime.datetime.now().time()
         entity.time = time
-        try:
-            entity.save()
-        except:
-            self.fail()
+        entity.save()
 
-        # check if primary_key=True is set correct for the saved entity
+        # check if primary_key=True is set correctly for the saved entity
         self.assertEquals(entity.pk, u'app-engine@scholardocs.com')
         gae_entity = Get(Key.from_path(FieldsWithOptionsModel._meta.db_table,
             entity.pk))
         self.assertTrue(gae_entity is not None)
         self.assertEquals(gae_entity.key().name(), u'app-engine@scholardocs.com')
         
-        # check if default values are set correct on the db level, primary_key field
-        # is not stored at the db level
+        # check if default values are set correctly on the db level,
+        # primary_key field is not stored at the db level
         for field in FieldsWithOptionsModel._meta.local_fields:
             if field.default and field.default != NOT_PROVIDED and not \
                     field.primary_key:
@@ -40,7 +37,7 @@ class FieldOptionsTest(TestCase):
             elif field.column == 'time':
                 self.assertEquals(gae_entity[field.column], datetime.datetime(
                     1970, 1, 1, time.hour, time.minute, time.second, time.microsecond))
-            elif field.null:
+            elif field.null and field.editable:
                 self.assertEquals(gae_entity[field.column], None)
 
         # check if default values are set correct on the model instance level
@@ -50,7 +47,7 @@ class FieldOptionsTest(TestCase):
                 self.assertEquals(getattr(entity, field.column), field.default)
             elif field.column == 'time':
                 self.assertEquals(getattr(entity, field.column), time)
-            elif field.null:
+            elif field.null and field.editable:
                 self.assertEquals(getattr(entity, field.column), None)
 
         # check if nullable field with default values can be set to None

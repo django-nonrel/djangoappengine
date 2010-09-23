@@ -1,5 +1,6 @@
 from django.db import models
 from ..db.db_settings import get_indexes
+from djangotoolbox.fields import BlobField
 
 class EmailModel(models.Model):
     email = models.EmailField()
@@ -77,6 +78,9 @@ class OrderedModel(models.Model):
 
     class Meta:
         ordering = ('-priority',)
+
+class BlobModel(models.Model):
+    data = BlobField()
 
 class DecimalModel(models.Model):
     decimal = models.DecimalField(max_digits=9, decimal_places=2)
