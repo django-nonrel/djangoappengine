@@ -266,9 +266,10 @@ class GAEQuery(NonrelQuery):
             if isinstance(value, Text):
                 raise DatabaseError('TextField is not indexed, by default, '
                                     "so you can't filter on it. "
-                                    'Please add an index definition as '
-                                    'described here:\n'
-                                    'http://www.allbuttonspressed.com/blog/django/2010/07/Managing-per-field-indexes-on-App-Engine')
+                                    'Please add an index definition for the '
+                                    'column "%s" as described here:\n'
+                                    'http://www.allbuttonspressed.com/blog/django/2010/07/Managing-per-field-indexes-on-App-Engine'
+                                    % column)
             if key in query:
                 existing_value = query[key]
                 if isinstance(existing_value, list):
