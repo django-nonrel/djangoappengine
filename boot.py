@@ -121,21 +121,29 @@ def setup_project():
         global env_ext
         env_ext['HOME'] = PROJECT_DIR
 
-    # Get the subprocess module into the dev_appserver sandbox.
+    # The dev_appserver creates a sandbox which restricts access to certain
+    # modules and builtins in order to emulate the production environment.
+    # Here we get the subprocess module back into the dev_appserver sandbox.
     # This module is just too important for development.
-    # Also add the compiler/parser module back and enable https connections
+    # Also we add the compiler/parser module back and enable https connections
     # (seem to be broken on Windows because the _ssl module is disallowed).
     if not have_appserver:
         from google.appengine.tools import dev_appserver
         try:
+            # Backup os.environ. It gets overwritten by the dev_appserver,
+            # but it's needed by the subprocess module.
             env = dev_appserver.DEFAULT_ENV
             dev_appserver.DEFAULT_ENV = os.environ.copy()
             dev_appserver.DEFAULT_ENV.update(env)
+            # Backup the buffer() builtin. The subprocess in Python 2.5 on
+            # Linux and OS X uses needs it, but the dev_appserver removes it.
+            dev_appserver.buffer = buffer
         except AttributeError:
             logging.warn('Could not patch the default environment. '
                          'The subprocess module will not work correctly.')
 
         try:
+            # Allow importing compiler/parser and _ssl modules (for https)
             dev_appserver.HardenedModulesHook._WHITE_LIST_C_MODULES.extend(
                 ('parser', '_ssl'))
         except AttributeError:
@@ -144,15 +152,12 @@ def setup_project():
                          'SSL support is disabled.')
     elif not on_production_server:
         try:
+            # Restore the real subprocess module
             from google.appengine.api.mail_stub import subprocess
             sys.modules['subprocess'] = subprocess
-            # subprocess in Python 2.5 on Linux and OS X uses the buffer()
-            # builtin which unfortunately gets removed by the GAE SDK, so
-            # we have to get it back with this ugly hack 
-            import inspect
-            frame = inspect.currentframe().f_back.f_back.f_back
-            old_builtin = frame.f_locals['old_builtin']
-            subprocess.buffer = old_builtin['buffer']
+            # Re-inject the buffer() builtin into the subprocess module
+            from google.appengine.tools import dev_appserver
+            subprocess.buffer = dev_appserver.buffer
         except Exception, e:
             logging.warn('Could not add the subprocess module to the sandbox: %s' % e)
 
