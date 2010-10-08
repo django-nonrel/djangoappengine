@@ -21,6 +21,8 @@ from google.appengine.api.datastore_types import Text, Category, Email, Link, \
 from djangotoolbox.db.basecompiler import NonrelQuery, NonrelCompiler, \
     NonrelInsertCompiler, NonrelUpdateCompiler, NonrelDeleteCompiler
 
+import cPickle as pickle
+
 import decimal
 
 # Valid query types (a dictionary is used for speedy lookups).
@@ -347,11 +349,21 @@ class SQLCompiler(NonrelCompiler):
     query_class = GAEQuery
 
     def convert_value_from_db(self, db_type, value):
-        if isinstance(value, (list, tuple)) and len(value) and \
-                db_type.startswith('ListField:'):
+        if isinstance(value, (list, tuple, set)) and \
+                db_type.startswith(('ListField:', 'SetField:')):
             db_sub_type = db_type.split(':', 1)[1]
             value = [self.convert_value_from_db(db_sub_type, subvalue)
                      for subvalue in value]
+
+        if db_type.startswith('SetField:') or db_type == 'SetField':
+            value = set(value)
+        
+        if db_type.startswith('DictField:') or db_type == 'DictField':
+            value = pickle.loads(value)
+            if ':' in db_type:
+                db_sub_type = db_type.split(':', 1)[1]
+                value = dict([(key, self.convert_value_from_db(db_sub_type, value[key]))
+                              for key in value])
 
         # the following GAE database types are all unicode subclasses, cast them
         # to unicode so they appear like pure unicode instances for django
@@ -396,13 +408,22 @@ class SQLCompiler(NonrelCompiler):
             value = unicode(value)
         elif isinstance(value, str):
             value = str(value)
-        elif isinstance(value, (list, tuple)) and len(value) and \
-                db_type.startswith('ListField:'):
+        elif isinstance(value, (list, tuple, set)) and \
+                db_type.startswith(('ListField:', 'SetField:')):
             db_sub_type = db_type.split(':', 1)[1]
             value = [self.convert_value_for_db(db_sub_type, subvalue)
                      for subvalue in value]
         elif isinstance(value, decimal.Decimal) and db_type.startswith("decimal:"):
             value = self.connection.ops.value_to_db_decimal(value, *eval(db_type[8:]))
+        elif isinstance(value, set) and db_type == 'SetField':
+            value = list(value)
+        elif isinstance(value, dict) and \
+                (db_type.startswith('DictField:') or db_type == 'DictField'):
+            if ':' in db_type:
+                db_sub_type = db_type.split(':', 1)[1]
+                value = dict([(key, self.convert_value_for_db(db_sub_type, value[key]))
+                              for key in value])
+            value = Blob(pickle.dumps(value))
 
         if db_type == 'gae_key':
             return value
