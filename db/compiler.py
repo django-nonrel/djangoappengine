@@ -355,10 +355,10 @@ class SQLCompiler(NonrelCompiler):
             value = [self.convert_value_from_db(db_sub_type, subvalue)
                      for subvalue in value]
 
-        if db_type.startswith('SetField:') or db_type == 'SetField':
+        if db_type.startswith('SetField:'):
             value = set(value)
-        
-        if db_type.startswith('DictField:') or db_type == 'DictField':
+
+        if db_type.startswith('DictField:'):
             value = pickle.loads(value)
             if ':' in db_type:
                 db_sub_type = db_type.split(':', 1)[1]
@@ -415,10 +415,7 @@ class SQLCompiler(NonrelCompiler):
                      for subvalue in value]
         elif isinstance(value, decimal.Decimal) and db_type.startswith("decimal:"):
             value = self.connection.ops.value_to_db_decimal(value, *eval(db_type[8:]))
-        elif isinstance(value, set) and db_type == 'SetField':
-            value = list(value)
-        elif isinstance(value, dict) and \
-                (db_type.startswith('DictField:') or db_type == 'DictField'):
+        elif isinstance(value, dict) and db_type.startswith('DictField:'):
             if ':' in db_type:
                 db_sub_type = db_type.split(':', 1)[1]
                 value = dict([(key, self.convert_value_for_db(db_sub_type, value[key]))
