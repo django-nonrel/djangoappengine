@@ -355,15 +355,15 @@ class SQLCompiler(NonrelCompiler):
             value = [self.convert_value_from_db(db_sub_type, subvalue)
                      for subvalue in value]
 
-        if db_type.startswith('SetField:'):
+        if db_type.startswith('SetField:') and value is not None:
             value = set(value)
 
-        if db_type.startswith('DictField:'):
+        if db_type.startswith('DictField:') and value is not None:
             value = pickle.loads(value)
             if ':' in db_type:
                 db_sub_type = db_type.split(':', 1)[1]
-                value = dict([(key, self.convert_value_from_db(db_sub_type, value[key]))
-                              for key in value])
+                value = dict((key, self.convert_value_from_db(db_sub_type, value[key]))
+                             for key in value)
 
         # the following GAE database types are all unicode subclasses, cast them
         # to unicode so they appear like pure unicode instances for django
