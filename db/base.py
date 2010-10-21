@@ -68,6 +68,7 @@ def destroy_datastore(*args):
                 logging.error("Failed to clear datastore: %s" % error)
 
 class DatabaseFeatures(NonrelDatabaseFeatures):
+    allows_primary_key_0 = True
     supports_dicts = True
 
 class DatabaseOperations(NonrelDatabaseOperations):
