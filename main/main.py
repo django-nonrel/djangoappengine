@@ -14,10 +14,8 @@ if 'django' in sys.modules and sys.modules['django'].VERSION < (1, 2):
               if k.startswith('django\.') or k == 'django']:
         del sys.modules[k]
 
-from djangoappengine import boot
-boot.setup_project()
-boot.setup_threading()
-boot.setup_logging()
+from djangoappengine.boot import setup_env
+setup_env()
 
 import django.core.handlers.wsgi
 from google.appengine.ext.webapp import util

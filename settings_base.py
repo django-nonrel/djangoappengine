@@ -1,3 +1,10 @@
+# Initialize App Engine SDK if necessary
+try:
+    from google.appengine.api import api_proxy_stub_map
+except ImportError:
+    from .boot import setup_env
+    setup_env()
+
 from djangoappengine.utils import on_production_server, have_appserver
 
 DEBUG = not on_production_server
@@ -8,7 +15,6 @@ ROOT_URLCONF = 'urls'
 DATABASES = {
     'default': {
         'ENGINE': 'djangoappengine.db',
-        'SUPPORTS_TRANSACTIONS': False,
     },
 }
 

@@ -75,6 +75,10 @@ def setup_env():
         from google.appengine.api import apiproxy_stub_map
 
     setup_project()
+    from .utils import have_appserver
+    if have_appserver:
+        # App Engine's threading.local is broken
+        setup_threading()
     setup_logging()
 
     # Patch Django to support loading management commands from zip files
@@ -108,11 +112,15 @@ def setup_logging():
     logging.logMultiprocessing = 0
 
     # Enable logging
-    from django.conf import settings
-    if settings.DEBUG:
-        logging.getLogger().setLevel(logging.DEBUG)
-    else:
-        logging.getLogger().setLevel(logging.INFO)
+    level = logging.DEBUG
+    from .utils import have_appserver
+    if have_appserver:
+        # We can't import settings at this point when running a normal
+        # manage.py command because this module gets imported from settings.py
+        from django.conf import settings
+        if not settings.DEBUG:
+            level = logging.INFO
+    logging.getLogger().setLevel(level)
 
 def setup_project():
     from .utils import have_appserver, on_production_server
