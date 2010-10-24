@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 
 # Add parent folder to sys.path, so we can import boot.
 # App Engine causes main.py to be reloaded if an exception gets raised
@@ -14,7 +15,7 @@ if 'django' in sys.modules and sys.modules['django'].VERSION < (1, 2):
               if k.startswith('django\.') or k == 'django']:
         del sys.modules[k]
 
-from djangoappengine.boot import setup_env
+from djangoappengine.boot import setup_env, setup_logging, env_ext
 setup_env()
 
 import django.core.handlers.wsgi
@@ -35,8 +36,8 @@ def real_main():
         sys.path = path_backup[:]
     except:
         path_backup = sys.path[:]
-    os.environ.update(boot.env_ext)
-    boot.setup_logging()
+    os.environ.update(env_ext)
+    setup_logging()
 
     # Create a Django application for WSGI.
     application = django.core.handlers.wsgi.WSGIHandler()
