@@ -20,6 +20,7 @@ def setup_env():
         # may be. First look within the project for a local copy, then look for
         # where the Mac OS SDK installs it.
         paths = [os.path.join(PROJECT_DIR, '.google_appengine'),
+                 os.environ.get('APP_ENGINE_SDK'),
                  '/usr/local/google_appengine',
                  '/Applications/GoogleAppEngineLauncher.app/Contents/Resources/GoogleAppEngine-default.bundle/Contents/Resources/google_appengine']
         for path in os.environ.get('PATH', '').split(os.pathsep):
@@ -32,6 +33,8 @@ def setup_env():
         # Loop through all possible paths and look for the SDK dir.
         sdk_path = None
         for path in paths:
+            if not path:
+                continue
             path = os.path.realpath(path)
             if os.path.exists(path):
                 sdk_path = path
@@ -165,8 +168,7 @@ def setup_project():
     # App Engine causes main.py to be reloaded if an exception gets raised
     # on the first request of a main.py instance, so don't call setup_project()
     # multiple times. We ensure this indirectly by checking if we've already
-    # modified sys.path.
+    # modified sys.path, already.
     if len(sys.path) < len(extra_paths) or \
             sys.path[:len(extra_paths)] != extra_paths:
-
         sys.path = extra_paths + sys.path

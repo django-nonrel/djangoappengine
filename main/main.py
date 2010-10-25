@@ -3,13 +3,13 @@ import sys
 
 # Add parent folder to sys.path, so we can import boot.
 # App Engine causes main.py to be reloaded if an exception gets raised
-# on the first request of a main.py instance, so don't add parent_dir multiple
+# on the first request of a main.py instance, so don't add project_dir multiple
 # times.
-parent_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-if parent_dir not in sys.path:
-    sys.path.insert(0, parent_dir)
+project_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+if project_dir not in sys.path or sys.path.index(project_dir) > 0:
+    sys.path.insert(0, project_dir)
 
-# Remove the standard version of Django
+# Remove the standard version of Django.
 if 'django' in sys.modules and sys.modules['django'].VERSION < (1, 2):
     for k in [k for k in sys.modules
               if k.startswith('django\.') or k == 'django']:
