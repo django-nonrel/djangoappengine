@@ -1,15 +1,18 @@
-import datetime
-from .creation import DatabaseCreation
 from ..utils import appid, have_appserver, on_production_server
+from .creation import DatabaseCreation
+from django.db.backends.util import format_number
 from djangotoolbox.db.base import NonrelDatabaseFeatures, \
     NonrelDatabaseOperations, NonrelDatabaseWrapper, NonrelDatabaseClient, \
     NonrelDatabaseValidation, NonrelDatabaseIntrospection
-import logging, os
-from django.db.backends.util import format_number
+from urllib2 import HTTPError, URLError
+import logging
+import os
+
+REMOTE_API_SCRIPT = '$PYTHON_LIB/google/appengine/ext/remote_api/handler.py'
 
 def auth_func():
     import getpass
-    return raw_input('Login via Google Account:'), getpass.getpass('Password:')
+    return raw_input('Login via Google Account: '), getpass.getpass('Password: ')
 
 def rpc_server_factory(*args, ** kwargs):
     from google.appengine.tools import appengine_rpc
@@ -120,14 +123,14 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
         self.validation = DatabaseValidation(self)
         self.introspection = DatabaseIntrospection(self)
         options = self.settings_dict
-        self.use_test_datastore = options.get('use_test_datastore', False)
-        self.test_datastore_inmemory = options.get('test_datastore_inmemory', True)
-        self.remote = options.get('remote', False)
+        self.use_test_datastore = False
+        self.test_datastore_inmemory = True
+        self.remote = options.get('REMOTE', False)
         if on_production_server:
             self.remote = False
-        self.remote_app_id = options.get('remote_id', appid)
-        self.remote_host = options.get('remote_host', '%s.appspot.com' % self.remote_app_id)
-        self.remote_url = options.get('remote_url', '/remote_api')
+        self.remote_app_id = options.get('REMOTE_APP_ID', appid)
+        self.remote_api_path = options.get('REMOTE_API_PATH', None)
+        self.secure_remote_api = options.get('SECURE_REMOTE_API', True)
         self._setup_stubs()
 
     def _get_paths(self):
@@ -150,17 +153,30 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
             self.setup_remote()
 
     def setup_remote(self):
+        if not self.remote_api_path:
+            from ..utils import appconfig
+            for handler in appconfig.handlers:
+                if handler.script == REMOTE_API_SCRIPT:
+                    self.remote_api_path = handler.url
+                    break
         self.remote = True
-        logging.info('Setting up remote_api for "%s" at http://%s%s' %
-                     (self.remote_app_id, self.remote_host, self.remote_url)
-                     )
+        remote_url = 'https://%s.appspot.com%s' % (self.remote_app_id,
+                                                   self.remote_api_path)
+        logging.info('Setting up remote_api for "%s" at %s' %
+                     (self.remote_app_id, remote_url))
         from google.appengine.ext.remote_api import remote_api_stub
-        from google.appengine.ext import db
-        remote_api_stub.ConfigureRemoteDatastore(self.remote_app_id,
-            self.remote_url, auth_func, self.remote_host,
+        remote_api_stub.ConfigureRemoteApi(self.remote_app_id,
+            self.remote_api_path, auth_func, secure=self.secure_remote_api,
             rpc_server_factory=rpc_server_factory)
-        logging.info('Now using the remote datastore for "%s" at http://%s%s' %
-                     (self.remote_app_id, self.remote_host, self.remote_url))
+        try:
+            remote_api_stub.MaybeInvokeAuthentication()
+        except HTTPError, e:
+            raise URLError("%s\nCouldn't reach remote_api handler at %s.\n"
+                             "Make sure you've deployed your project and "
+                             "installed a remote_api handler in app.yaml."
+                             % (e, remote_url))
+        logging.info('Now using the remote datastore for "%s" at %s' %
+                     (self.remote_app_id, remote_url))
 
     def flush(self):
         """Helper function to remove the current datastore and re-open the stubs"""
