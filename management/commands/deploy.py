@@ -18,18 +18,14 @@
 # CHANGED: show warning if profiler is enabled, so you don't mistakenly upload
 # with non-production settings. Also, added --nosyncdb switch.
 
-import sys
 import logging
+import time
 
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
 def run_appcfg(argv):
-    # import this so that we run through the checks at the beginning
-    # and report the appropriate errors
-    import appcfg
-
     # We don't really want to use that one though, it just executes this one
     from google.appengine.tools import appcfg
 
@@ -46,13 +42,15 @@ def run_appcfg(argv):
     appcfg.main(new_args)
 
     if syncdb:
-        from django.core.management import call_command
-        from django.db import connection
-        connection.setup_remote()
+        from django.db import connections
+        for connection in connections.all():
+            if hasattr(connection, 'setup_remote'):
+                connection.setup_remote()
         print 'Running syncdb.'
+        # Wait a little bit for deployment to finish
+        time.sleep(2)
         call_command('syncdb', remote=True, interactive=True)
 
-    from django.conf import settings
     if getattr(settings, 'ENABLE_PROFILER', False):
         print '--------------------------\n' \
               'WARNING: PROFILER ENABLED!\n' \
