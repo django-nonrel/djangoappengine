@@ -18,12 +18,13 @@
 # CHANGED: show warning if profiler is enabled, so you don't mistakenly upload
 # with non-production settings. Also, added --nosyncdb switch.
 
-import logging
-import time
-
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
+import logging
+import sys
+import time
+
 
 def run_appcfg(argv):
     # We don't really want to use that one though, it just executes this one
@@ -31,7 +32,7 @@ def run_appcfg(argv):
 
     # Reset the logging level to WARN as appcfg will spew tons of logs on INFO
     logging.getLogger().setLevel(logging.WARN)
-    
+
     new_args = argv[:]
     new_args[1] = 'update'
     new_args.append('.')
@@ -42,13 +43,15 @@ def run_appcfg(argv):
     appcfg.main(new_args)
 
     if syncdb:
+        print 'Running syncdb.'
+        # Wait a little bit for deployment to finish
+        for countdown in range(9, 0, -1):
+            sys.stdout.write('%s\r' % countdown)
+            time.sleep(1)
         from django.db import connections
         for connection in connections.all():
             if hasattr(connection, 'setup_remote'):
                 connection.setup_remote()
-        print 'Running syncdb.'
-        # Wait a little bit for deployment to finish
-        time.sleep(2)
         call_command('syncdb', remote=True, interactive=True)
 
     if getattr(settings, 'ENABLE_PROFILER', False):
