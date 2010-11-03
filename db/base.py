@@ -7,6 +7,7 @@ from djangotoolbox.db.base import NonrelDatabaseFeatures, \
 from urllib2 import HTTPError, URLError
 import logging
 import os
+import time
 
 REMOTE_API_SCRIPT = '$PYTHON_LIB/google/appengine/ext/remote_api/handler.py'
 
@@ -171,10 +172,15 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
         try:
             remote_api_stub.MaybeInvokeAuthentication()
         except HTTPError, e:
-            raise URLError("%s\nCouldn't reach remote_api handler at %s.\n"
-                             "Make sure you've deployed your project and "
-                             "installed a remote_api handler in app.yaml."
-                             % (e, remote_url))
+            time.sleep(3)
+            try:
+                remote_api_stub.MaybeInvokeAuthentication()
+            except HTTPError, e:
+                raise URLError("%s\n"
+                               "Couldn't reach remote_api handler at %s.\n"
+                               "Make sure you've deployed your project and "
+                               "installed a remote_api handler in app.yaml."
+                               % (e, remote_url))
         logging.info('Now using the remote datastore for "%s" at %s' %
                      (self.remote_app_id, remote_url))
 
