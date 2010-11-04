@@ -171,4 +171,7 @@ def setup_project():
     # modified sys.path, already.
     if len(sys.path) < len(extra_paths) or \
             sys.path[:len(extra_paths)] != extra_paths:
+        for path in extra_paths:
+            while path in sys.path:
+                sys.path.remove(path)
         sys.path = extra_paths + sys.path

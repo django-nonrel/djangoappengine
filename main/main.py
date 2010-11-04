@@ -7,7 +7,14 @@ import sys
 # times.
 project_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 if project_dir not in sys.path or sys.path.index(project_dir) > 0:
+    while project_dir in sys.path:
+        sys.path.remove(project_dir)
     sys.path.insert(0, project_dir)
+
+for path in sys.path[:]:
+    if path != project_dir and os.path.isdir(os.path.join(path, 'django')):
+        sys.path.remove(path)
+        break
 
 # Remove the standard version of Django.
 if 'django' in sys.modules and sys.modules['django'].VERSION < (1, 2):
@@ -18,8 +25,8 @@ if 'django' in sys.modules and sys.modules['django'].VERSION < (1, 2):
 from djangoappengine.boot import setup_env, setup_logging, env_ext
 setup_env()
 
-import django.core.handlers.wsgi
-from google.appengine.ext.webapp import util
+from django.core.handlers.wsgi import WSGIHandler
+from google.appengine.ext.webapp.util import run_wsgi_app
 from django.conf import settings
 
 def log_traceback(*args, **kwargs):
@@ -40,10 +47,10 @@ def real_main():
     setup_logging()
 
     # Create a Django application for WSGI.
-    application = django.core.handlers.wsgi.WSGIHandler()
+    application = WSGIHandler()
 
     # Run the WSGI CGI handler with that application.
-    util.run_wsgi_app(application)
+    run_wsgi_app(application)
 
 def profile_main():
     import logging, cProfile, pstats, random, StringIO
