@@ -165,14 +165,24 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
                                                    self.remote_api_path)
         logging.info('Setting up remote_api for "%s" at %s' %
                      (self.remote_app_id, remote_url))
+        if not have_appserver:
+            print 'Connecting to remote_api handler'
         from google.appengine.ext.remote_api import remote_api_stub
         remote_api_stub.ConfigureRemoteApi(self.remote_app_id,
             self.remote_api_path, auth_func, secure=self.secure_remote_api,
             rpc_server_factory=rpc_server_factory)
-        try:
-            remote_api_stub.MaybeInvokeAuthentication()
-        except HTTPError, e:
-            time.sleep(3)
+        retry_delay = 1
+        while retry_delay <= 16:
+            try:
+                remote_api_stub.MaybeInvokeAuthentication()
+            except HTTPError, e:
+                if not have_appserver:
+                    print 'Retrying in %d seconds...' % retry_delay
+                time.sleep(retry_delay)
+                retry_delay *= 2
+            else:
+                break
+        else:
             try:
                 remote_api_stub.MaybeInvokeAuthentication()
             except HTTPError, e:
