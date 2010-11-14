@@ -35,6 +35,7 @@ def setup_env():
         for path in paths:
             if not path:
                 continue
+            path = os.path.expanduser(path)
             path = os.path.realpath(path)
             if os.path.exists(path):
                 sdk_path = path
