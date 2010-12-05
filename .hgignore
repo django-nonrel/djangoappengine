@@ -1,4 +1,7 @@
 syntax: glob
+build
+dist
+*.egg-info
 .project
 .pydevproject
 .settings
@@ -10,3 +13,5 @@ syntax: glob
 *.tmp
 desktop.ini
 nbproject
+build
+dist
