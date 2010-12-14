@@ -77,4 +77,3 @@ class FieldOptionsTest(TestCase):
         # TODO: check db_column option
         # TODO: change the primary key and check if a new instance with the
         # changed primary key will be saved (not in this test class)
-        

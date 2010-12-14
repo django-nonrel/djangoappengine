@@ -17,7 +17,7 @@ class FieldsWithoutOptionsModel(models.Model):
     floating_point = models.FloatField()
     boolean = models.BooleanField()
     null_boolean = models.NullBooleanField()
-    text = models.CharField(max_length=3)
+    text = models.CharField(max_length=32)
     email = models.EmailField()
     comma_seperated_integer = models.CommaSeparatedIntegerField(max_length=10)
     ip_address = models.IPAddressField()

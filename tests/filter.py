@@ -1,12 +1,13 @@
-from .testmodels import FieldsWithOptionsModel, EmailModel, DateTimeModel, OrderedModel
-from ..db.utils import get_cursor
-import datetime, time
-from django.test import TestCase
+from ..db.utils import get_cursor, set_cursor
+from .testmodels import FieldsWithOptionsModel, EmailModel, DateTimeModel, \
+    OrderedModel, BlobModel
 from django.db.models import Q
 from django.db.utils import DatabaseError
-from djangoappengine.db.utils import set_cursor
-from djangoappengine.tests.testmodels import BlobModel
+from django.test import TestCase
+from django.utils import unittest
 from google.appengine.api.datastore import Get, Key
+import datetime
+import time
 
 class FilterTest(TestCase):
     floats = [5.3, 2.6, 9.1, 1.58]
