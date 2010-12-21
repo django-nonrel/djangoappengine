@@ -46,8 +46,13 @@ def real_main():
     os.environ.update(env_ext)
     setup_logging()
 
-    # Create a Django application for WSGI.
+    # Create a Django application for WSGI
     application = WSGIHandler()
+
+    # Add the staticfiles handler if necessary
+    if settings.DEBUG and 'django.contrib.staticfiles' in settings.INSTALLED_APPS:
+        from django.contrib.staticfiles.handlers import StaticFilesHandler
+        application = StaticFilesHandler(application)
 
     # Run the WSGI CGI handler with that application.
     run_wsgi_app(application)
