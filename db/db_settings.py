@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.utils.importlib import import_module
 
+# TODO: add autodiscover() and make API more like dbindexer's register_index
+
 _MODULE_NAMES = getattr(settings, 'GAE_SETTINGS_MODULES', ())
 
 FIELD_INDEXES = None
