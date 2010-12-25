@@ -23,9 +23,6 @@ def get_indexes():
     if FIELD_INDEXES is None:
         field_indexes = {}
         for name in _MODULE_NAMES:
-            try:
-                field_indexes.update(import_module(name).FIELD_INDEXES)
-            except ImportError:
-                pass
+            field_indexes.update(import_module(name).FIELD_INDEXES)
         FIELD_INDEXES = field_indexes
     return FIELD_INDEXES
