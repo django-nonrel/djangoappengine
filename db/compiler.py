@@ -1,4 +1,4 @@
-from .db_settings import get_indexes
+from .db_settings import get_model_indexes
 
 import datetime
 import sys
@@ -445,8 +445,7 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
     def insert(self, data, return_id=False):
         gae_data = {}
         opts = self.query.get_meta()
-        indexes = get_indexes().get(self.query.model, {})
-        unindexed_fields = indexes.get('unindexed', ())
+        unindexed_fields = get_model_indexes(self.query.model)['unindexed']
         unindexed_cols = [opts.get_field(name).column
                           for name in unindexed_fields]
         kwds = {'unindexed_properties': unindexed_cols}

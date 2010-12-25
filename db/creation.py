@@ -1,4 +1,4 @@
-from .db_settings import get_indexes
+from .db_settings import get_model_indexes
 from djangotoolbox.db.creation import NonrelDatabaseCreation
 
 class StringType(object):
@@ -6,10 +6,10 @@ class StringType(object):
         self.internal_type = internal_type
 
     def __mod__(self, field):
-        indexes = get_indexes().get(field['model'], {})
-        if field['name'] in indexes.get('indexed', ()):
+        indexes = get_model_indexes(field['model'])
+        if field['name'] in indexes['indexed']:
             return 'text'
-        elif field['name'] in indexes.get('unindexed', ()):
+        elif field['name'] in indexes['unindexed']:
             return 'longtext'
         return self.internal_type
 
