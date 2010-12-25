@@ -25,7 +25,7 @@ def get_indexes():
         for name in _MODULE_NAMES:
             try:
                 field_indexes.update(import_module(name).FIELD_INDEXES)
-            except (ImportError, AttributeError):
+            except ImportError:
                 pass
         FIELD_INDEXES = field_indexes
     return FIELD_INDEXES
