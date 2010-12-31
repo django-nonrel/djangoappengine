@@ -19,7 +19,7 @@ for path in sys.path[:]:
 # Remove the standard version of Django.
 if 'django' in sys.modules and sys.modules['django'].VERSION < (1, 2):
     for k in [k for k in sys.modules
-              if k.startswith('django\.') or k == 'django']:
+              if k.startswith('django.') or k == 'django']:
         del sys.modules[k]
 
 from djangoappengine.boot import setup_env, setup_logging, env_ext
