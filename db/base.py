@@ -158,7 +158,7 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
             from ..utils import appconfig
             for handler in appconfig.handlers:
                 if handler.script == REMOTE_API_SCRIPT:
-                    self.remote_api_path = handler.url
+                    self.remote_api_path = handler.url.split('(', 1)[0]
                     break
         self.remote = True
         remote_url = 'https://%s.appspot.com%s' % (self.remote_app_id,
