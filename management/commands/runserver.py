@@ -20,6 +20,7 @@ import os
 import sys
 
 from django.db import connections
+from ...boot import PROJECT_DIR
 from ...db.base import DatabaseWrapper
 from django.core.management.base import BaseCommand
 from django.core.exceptions import ImproperlyConfigured
@@ -77,7 +78,7 @@ def start_dev_appserver(argv):
     logging.getLogger().setLevel(logging.INFO)
 
     # Append the current working directory to the arguments.
-    dev_appserver_main.main([progname] + args + [os.getcwdu()])
+    dev_appserver_main.main([progname] + args + [PROJECT_DIR])
 
 class Command(BaseCommand):
     """Overrides the default Django runserver command.
