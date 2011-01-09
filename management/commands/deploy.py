@@ -18,6 +18,7 @@
 # CHANGED: show warning if profiler is enabled, so you don't mistakenly upload
 # with non-production settings. Also, added --nosyncdb switch.
 
+from ...boot import PROJECT_DIR
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
@@ -35,7 +36,7 @@ def run_appcfg(argv):
 
     new_args = argv[:]
     new_args[1] = 'update'
-    new_args.append('.')
+    new_args.append(PROJECT_DIR)
     syncdb = True
     if '--nosyncdb' in new_args:
         syncdb = False

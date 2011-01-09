@@ -16,7 +16,6 @@
 
 
 import logging
-import os
 import sys
 
 from django.db import connections
