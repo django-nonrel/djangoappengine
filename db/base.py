@@ -166,7 +166,10 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
         logging.info('Setting up remote_api for "%s" at %s' %
                      (self.remote_app_id, remote_url))
         if not have_appserver:
-            print 'Connecting to remote_api handler'
+            print('Connecting to remote_api handler.\n'
+                  'IMPORTANT: Check your login method settings in the '
+                  'App Engine Dashboard if you have problems logging in. '
+                  'Login is only supported for Google Accounts.')
         from google.appengine.ext.remote_api import remote_api_stub
         remote_api_stub.ConfigureRemoteApi(self.remote_app_id,
             self.remote_api_path, auth_func, secure=self.secure_remote_api,
