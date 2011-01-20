@@ -57,7 +57,7 @@ def real_main():
     # Run the WSGI CGI handler with that application.
     run_wsgi_app(application)
 
-def profile_main():
+def profile_main(func):
     import logging, cProfile, pstats, random, StringIO
     only_forced_profile = getattr(settings, 'ONLY_FORCED_PROFILE', False)
     profile_percentage = getattr(settings, 'PROFILE_PERCENTAGE', None)
@@ -65,10 +65,10 @@ def profile_main():
                 'profile=forced' not in os.environ.get('QUERY_STRING')) or \
             (not only_forced_profile and profile_percentage and
                 float(profile_percentage) / 100.0 <= random.random()):
-        return real_main()
+        return func()
 
     prof = cProfile.Profile()
-    prof = prof.runctx('real_main()', globals(), locals())
+    prof = prof.runctx('func()', globals(), locals())
     stream = StringIO.StringIO()
     stats = pstats.Stats(prof, stream=stream)
     sort_by = getattr(settings, 'SORT_PROFILE_RESULTS_BY', 'time')
@@ -93,7 +93,12 @@ def profile_main():
         stats.print_callers()
     logging.info('Profile data:\n%s', stream.getvalue())
 
-main = getattr(settings, 'ENABLE_PROFILER', False) and profile_main or real_main
+def make_profileable(func):
+    if getattr(settings, 'ENABLE_PROFILER', False):
+        return lambda: profile_main(func)
+    return func
+
+main = make_profileable(real_main)
 
 if __name__ == '__main__':
     main()
