@@ -192,7 +192,11 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
                 raise URLError("%s\n"
                                "Couldn't reach remote_api handler at %s.\n"
                                "Make sure you've deployed your project and "
-                               "installed a remote_api handler in app.yaml."
+                               "installed a remote_api handler in app.yaml. "
+                               "Note that login is only supported for "
+                               "Google Accounts. Make sure you've configured "
+                               "the correct authentication method in the "
+                               "App Engine Dashboard."
                                % (e, remote_url))
         logging.info('Now using the remote datastore for "%s" at %s' %
                      (self.remote_app_id, remote_url))
