@@ -279,13 +279,12 @@ class FilterTest(TestCase):
         for item in results:
             query = FieldsWithOptionsModel.objects.all()[:1]
             if cursor is not None:
-                set_cursor(query, cursor)
+                query = set_cursor(query, cursor)
             next = query[0]
             self.assertEqual(next.pk, item.pk)
             cursor = get_cursor(query)
-        query = FieldsWithOptionsModel.objects.all()[:1]
-        set_cursor(query, cursor)
-        self.assertEqual(list(query), [])
+        query = set_cursor(FieldsWithOptionsModel.objects.all(), cursor)
+        self.assertEqual(list(query[:1]), [])
 
     def test_Q_objects(self):
         self.assertEquals([entity.email for entity in
