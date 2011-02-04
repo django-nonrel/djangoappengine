@@ -1,4 +1,5 @@
 from ..utils import appid, have_appserver, on_production_server
+from ..boot import DATA_ROOT
 from .creation import DatabaseCreation
 from django.db.backends.util import format_number
 from djangotoolbox.db.base import NonrelDatabaseFeatures, \
@@ -32,14 +33,11 @@ def get_datastore_paths(options):
     """
     from google.appengine.tools import dev_appserver_main
     datastore_path = options.get('datastore_path',
-                                 dev_appserver_main.DEFAULT_ARGS['datastore_path'].replace(
-                                 'dev_appserver', 'django_%s' % appid))
+                                 os.path.join(DATA_ROOT, 'datastore'))
     blobstore_path = options.get('blobstore_path',
-                                 dev_appserver_main.DEFAULT_ARGS['blobstore_path'].replace(
-                                 'dev_appserver', 'django_%s' % appid))
+                                 os.path.join(DATA_ROOT, 'blobstore'))
     history_path = options.get('history_path',
-                               dev_appserver_main.DEFAULT_ARGS['history_path'].replace(
-                               'dev_appserver', 'django_%s' % appid))
+                               os.path.join(DATA_ROOT, 'history'))
     return datastore_path, blobstore_path, history_path
 
 def get_test_datastore_paths(inmemory=True):

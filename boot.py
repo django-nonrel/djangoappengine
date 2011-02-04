@@ -3,6 +3,7 @@ import os
 import sys
 
 PROJECT_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+DATA_ROOT = os.path.join(PROJECT_DIR, '.gaedata')
 
 # Overrides for os.environ
 env_ext = {'DJANGO_SETTINGS_MODULE': 'settings'}
@@ -66,6 +67,8 @@ def setup_env():
     if have_appserver:
         # App Engine's threading.local is broken
         setup_threading()
+    elif not os.path.exists(DATA_ROOT):
+        os.mkdir(DATA_ROOT)
     setup_logging()
 
     if not have_appserver:
