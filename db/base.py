@@ -128,6 +128,8 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
         if on_production_server:
             self.remote = False
         self.remote_app_id = options.get('REMOTE_APP_ID', appid)
+        self.high_replication = options.get('HIGH_REPLICATION', False)
+        self.domain = options.get('DOMAIN', 'appspot.com')
         self.remote_api_path = options.get('REMOTE_API_PATH', None)
         self.secure_remote_api = options.get('SECURE_REMOTE_API', True)
         self._setup_stubs()
@@ -159,8 +161,8 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
                     self.remote_api_path = handler.url.split('(', 1)[0]
                     break
         self.remote = True
-        remote_url = 'https://%s.appspot.com%s' % (self.remote_app_id,
-                                                   self.remote_api_path)
+        server = '%s.%s' % (self.remote_app_id, self.domain)
+        remote_url = 'https://%s%s' % (server, self.remote_api_path)
         logging.info('Setting up remote_api for "%s" at %s' %
                      (self.remote_app_id, remote_url))
         if not have_appserver:
@@ -169,8 +171,12 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
                   'App Engine Dashboard if you have problems logging in. '
                   'Login is only supported for Google Accounts.\n')
         from google.appengine.ext.remote_api import remote_api_stub
-        remote_api_stub.ConfigureRemoteApi(self.remote_app_id,
-            self.remote_api_path, auth_func, secure=self.secure_remote_api,
+        remote_app_id = self.remote_app_id
+        if self.high_replication:
+            remote_app_id = 's~' + remote_app_id
+        remote_api_stub.ConfigureRemoteApi(remote_app_id,
+            self.remote_api_path, auth_func, servername=server,
+            secure=self.secure_remote_api,
             rpc_server_factory=rpc_server_factory)
         retry_delay = 1
         while retry_delay <= 16:
