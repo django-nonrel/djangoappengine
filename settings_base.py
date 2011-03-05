@@ -15,6 +15,14 @@ ROOT_URLCONF = 'urls'
 DATABASES = {
     'default': {
         'ENGINE': 'djangoappengine.db',
+
+        # Other settings which you might want to override in your settings.py
+
+        # Activates high-replication support for remote_api
+        # 'HIGH_REPLICATION': True,
+
+        # Switch to the App Engine for Business domain
+        # 'DOMAIN': 'googleplex.com',
     },
 }
 
