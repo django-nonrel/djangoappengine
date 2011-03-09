@@ -24,5 +24,4 @@ def set_cursor(queryset, start=None, end=None):
     if end is not None:
         end = Cursor.from_websafe_string(end)
     queryset.query._gae_end_cursor = end
-    # Evaluate QuerySet
     return queryset
