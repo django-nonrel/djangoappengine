@@ -23,3 +23,29 @@ class BackendTest(TestCase):
         self.assertEqual(A.objects.all()[0].value, 3)
         self.assertRaises(DatabaseError, B.objects.count)
         self.assertRaises(DatabaseError, lambda: B.objects.all()[0])
+
+    def test_in_sort(self):
+        class Post(models.Model):
+            writer = models.IntegerField()
+            order = models.IntegerField()
+        Post(writer=1, order=1).save()
+        Post(writer=1, order=2).save()
+        Post(writer=1, order=3).save()
+        Post(writer=2, order=4).save()
+        Post(writer=2, order=5).save()
+        import logging
+        posts = Post.objects.filter(writer__in= [1,2]).order_by('order')
+        logging.warn('posts %s' % (list(i.order for i in posts)))
+        self.assertEqual(posts[0].order, 1)
+        self.assertEqual(posts[1].order, 2)
+        self.assertEqual(posts[2].order, 3)
+        self.assertEqual(posts[3].order, 4)
+        self.assertEqual(posts[4].order, 5)
+        posts = Post.objects.filter(writer__in= [1,2]).order_by('-order')
+        logging.warn('posts %s' % (list(i.order for i in posts)))
+        self.assertEqual(posts[0].order, 5)
+        self.assertEqual(posts[1].order, 4)
+        self.assertEqual(posts[2].order, 3)
+        self.assertEqual(posts[3].order, 2)
+        self.assertEqual(posts[4].order, 1)
+

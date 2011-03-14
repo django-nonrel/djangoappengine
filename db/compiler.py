@@ -307,7 +307,7 @@ class GAEQuery(NonrelQuery):
     def _build_query(self):
         if len(self.gae_query) > 1:
             for i in self.gae_query:
-                i.Order(self.gae_ordering)
+                i.Order(*self.gae_ordering)
             return MultiQuery(self.gae_query, self.gae_ordering)
         query = self.gae_query[0]
         query.Order(*self.gae_ordering)
