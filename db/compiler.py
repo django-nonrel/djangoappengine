@@ -305,13 +305,11 @@ class GAEQuery(NonrelQuery):
 
     @safe_call
     def _build_query(self):
+        for query in self.gae_query:
+            query.Order(*self.gae_ordering)
         if len(self.gae_query) > 1:
-            for i in self.gae_query:
-                i.Order(*self.gae_ordering)
             return MultiQuery(self.gae_query, self.gae_ordering)
-        query = self.gae_query[0]
-        query.Order(*self.gae_ordering)
-        return query
+        return self.gae_query[0]
 
     def get_matching_pk(self, low_mark=0, high_mark=None):
         if not self.pk_filters:
