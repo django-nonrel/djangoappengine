@@ -39,4 +39,4 @@ class DatabaseCreation(NonrelDatabaseCreation):
     def destroy_test_db(self, *args, **kw):
         """Destroys the test datastore files."""
         from .base import destroy_datastore, get_test_datastore_paths
-        destroy_datastore(*get_test_datastore_paths())
+        destroy_datastore(get_test_datastore_paths(self.connection.settings_dict))

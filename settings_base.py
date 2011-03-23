@@ -40,7 +40,13 @@ FILE_UPLOAD_HANDLERS = (
     'django.core.files.uploadhandler.MemoryFileUploadHandler',
 )
 
-CACHE_BACKEND = 'memcached://?timeout=0'
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'TIMEOUT': 0,
+    }
+}
+
 SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
 
 if not on_production_server:

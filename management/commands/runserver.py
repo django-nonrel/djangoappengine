@@ -64,13 +64,14 @@ def start_dev_appserver(argv):
     for name in connections:
         connection = connections[name]
         if isinstance(connection, DatabaseWrapper):
-            p = connection._get_paths()
-            if '--datastore_path' not in args:
-                args.extend(['--datastore_path', p[0]])
-            if '--blobstore_path' not in args:
-                args.extend(['--blobstore_path', p[1]])
-            if '--history_path' not in args:
-                args.extend(['--history_path', p[2]])
+            for key, path in connection._get_paths().items():
+                # XXX/TODO: Remove this when SDK 1.4.3 is released
+                if key == 'prospective_search_path':
+                    continue
+
+                arg = '--' + key
+                if arg not in args:
+                    args.extend([arg, path])
             break
 
     # Reset logging level to INFO as dev_appserver will spew tons of debug logs

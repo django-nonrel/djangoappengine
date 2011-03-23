@@ -5,12 +5,19 @@ from django.db.backends.util import format_number
 from djangotoolbox.db.base import NonrelDatabaseFeatures, \
     NonrelDatabaseOperations, NonrelDatabaseWrapper, NonrelDatabaseClient, \
     NonrelDatabaseValidation, NonrelDatabaseIntrospection
+from google.appengine.api.datastore import Query
 from urllib2 import HTTPError, URLError
 import logging
 import os
 import time
 
 REMOTE_API_SCRIPT = '$PYTHON_LIB/google/appengine/ext/remote_api/handler.py'
+DATASTORE_PATHS = {
+    'datastore_path': os.path.join(DATA_ROOT, 'datastore'),
+    'blobstore_path': os.path.join(DATA_ROOT, 'blobstore'),
+    'rdbms_sqlite_path': os.path.join(DATA_ROOT, 'rdbms'),
+    'prospective_search_path': os.path.join(DATA_ROOT, 'prospective-search'),
+}
 
 def auth_func():
     import getpass
@@ -22,45 +29,23 @@ def rpc_server_factory(*args, ** kwargs):
     return appengine_rpc.HttpRpcServer(*args, ** kwargs)
 
 def get_datastore_paths(options):
-    """Returns a tuple with the path to the datastore and history file.
+    paths = {}
+    for key, path in DATASTORE_PATHS.items():
+        paths[key] = options.get(key, path)
+    return paths
 
-    The datastore is stored in the same location as dev_appserver uses by
-    default, but the name is altered to be unique to this project so multiple
-    Django projects can be developed on the same machine in parallel.
-
-    Returns:
-      (datastore_path, history_path)
-    """
-    from google.appengine.tools import dev_appserver_main
-    datastore_path = options.get('datastore_path',
-                                 os.path.join(DATA_ROOT, 'datastore'))
-    blobstore_path = options.get('blobstore_path',
-                                 os.path.join(DATA_ROOT, 'blobstore'))
-    history_path = options.get('history_path',
-                               os.path.join(DATA_ROOT, 'history'))
-    return datastore_path, blobstore_path, history_path
-
-def get_test_datastore_paths(inmemory=True):
-    """Returns a tuple with the path to the test datastore and history file.
-
-    If inmemory is true, (None, None) is returned to request an in-memory
-    datastore. If inmemory is false the path returned will be similar to the path
-    returned by get_datastore_paths but with a different name.
-
-    Returns:
-      (datastore_path, history_path)
-    """
+def get_test_datastore_paths(options, inmemory=True):
+    paths = get_datastore_paths(options)
+    for key in paths:
+        paths[key] += '.test'
     if inmemory:
-        return None, None, None
-    datastore_path, blobstore_path, history_path = get_datastore_paths()
-    datastore_path = datastore_path.replace('.datastore', '.testdatastore')
-    blobstore_path = blobstore_path.replace('.blobstore', '.testblobstore')
-    history_path = history_path.replace('.datastore', '.testdatastore')
-    return datastore_path, blobstore_path, history_path
+        for key in ('datastore_path', 'blobstore_path'):
+            paths[key] = None
+    return paths
 
-def destroy_datastore(*args):
+def destroy_datastore(paths):
     """Destroys the appengine datastore at the specified paths."""
-    for path in args:
+    for path in paths.values():
         if not path:
             continue
         try:
@@ -110,7 +95,9 @@ class DatabaseValidation(NonrelDatabaseValidation):
     pass
 
 class DatabaseIntrospection(NonrelDatabaseIntrospection):
-    pass
+    def table_names(self):
+        """Returns a list of names of all tables that exist in the database."""
+        return [kind.key().name() for kind in Query(kind='__kind__').Run()]
 
 class DatabaseWrapper(NonrelDatabaseWrapper):
     def __init__(self, *args, **kwds):
@@ -136,7 +123,7 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
 
     def _get_paths(self):
         if self.use_test_datastore:
-            return get_test_datastore_paths(self.test_datastore_inmemory)
+            return get_test_datastore_paths(self.settings_dict, self.test_datastore_inmemory)
         else:
             return get_datastore_paths(self.settings_dict)
 
@@ -146,9 +133,12 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
         if not have_appserver:
             from google.appengine.tools import dev_appserver_main
             args = dev_appserver_main.DEFAULT_ARGS.copy()
-            args['datastore_path'], args['blobstore_path'], args['history_path'] = self._get_paths()
+            args.update(self._get_paths())
+            log_level = logging.getLogger().getEffectiveLevel()
+            logging.getLogger().setLevel(logging.WARNING)
             from google.appengine.tools import dev_appserver
             dev_appserver.SetupStubs(appid, **args)
+            logging.getLogger().setLevel(log_level)
         # If we're supposed to set up the remote_api, do that now.
         if self.remote:
             self.setup_remote()
@@ -238,5 +228,5 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
                 print 'Aborting'
                 exit()
         else:
-            destroy_datastore(*self._get_paths())
+            destroy_datastore(self._get_paths())
         self._setup_stubs()
