@@ -1,3 +1,5 @@
+from email.MIMEBase import MIMEBase
+
 from django.core.mail.backends.base import BaseEmailBackend
 from django.core.mail import EmailMultiAlternatives
 from django.core.exceptions import ImproperlyConfigured
@@ -35,7 +37,7 @@ class EmailBackend(BaseEmailBackend):
                     attachments.append((attachment.get_filename(),
                                         attachment.get_payload(decode=True)))
                 else:
-                    gmsg.attachments.append((a[0], a[1]))
+                    attachments.append((attachment[0], attachment[1]))
             gmsg.attachments = attachments
         # Look for HTML alternative content
         if isinstance(message, EmailMultiAlternatives):
