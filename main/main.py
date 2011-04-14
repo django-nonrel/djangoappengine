@@ -58,7 +58,11 @@ def real_main():
     run_wsgi_app(application)
 
 def profile_main(func):
-    import logging, cProfile, pstats, random, StringIO
+    from cStringIO import StringIO
+    import cProfile
+    import logging
+    import pstats
+    import random
     only_forced_profile = getattr(settings, 'ONLY_FORCED_PROFILE', False)
     profile_percentage = getattr(settings, 'PROFILE_PERCENTAGE', None)
     if (only_forced_profile and
@@ -69,7 +73,7 @@ def profile_main(func):
 
     prof = cProfile.Profile()
     prof = prof.runctx('func()', globals(), locals())
-    stream = StringIO.StringIO()
+    stream = StringIO()
     stats = pstats.Stats(prof, stream=stream)
     sort_by = getattr(settings, 'SORT_PROFILE_RESULTS_BY', 'time')
     if not isinstance(sort_by, (list, tuple)):

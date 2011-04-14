@@ -184,11 +184,11 @@ class GAEQuery(NonrelQuery):
                 key_type_error = 'Lookup values on primary keys have to be' \
                                  'a string or an integer.'
                 if lookup_type == 'range':
-                    if isinstance(value,(list, tuple)) and not(isinstance(
-                            value[0], (basestring, int, long)) and \
+                    if isinstance(value, (list, tuple)) and not (
+                            isinstance(value[0], (basestring, int, long)) and
                             isinstance(value[1], (basestring, int, long))):
                         raise DatabaseError(key_type_error)
-                elif not isinstance(value,(basestring, int, long)):
+                elif not isinstance(value, (basestring, int, long)):
                     raise DatabaseError(key_type_error)
                 # for lookup type range we have to deal with a list
                 if lookup_type == 'range':

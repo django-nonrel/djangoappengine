@@ -54,4 +54,3 @@ class OrderTest(TestCase):
                           priorities)
 
     # TODO: test multiple orders
-

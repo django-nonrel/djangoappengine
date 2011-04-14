@@ -31,7 +31,7 @@ class FieldDBConversionTest(TestCase):
         for name, gae_db_type in [('long_text', Text),
                 ('indexed_text', unicode), ('xml', Text),
                 ('text', unicode), ('ip_address', unicode), ('slug', unicode),
-                ('email', unicode),('comma_seperated_integer', unicode),
+                ('email', unicode), ('comma_seperated_integer', unicode),
                 ('url', unicode), ('time', datetime.datetime),
                 ('datetime', datetime.datetime), ('date', datetime.datetime),
                 ('floating_point', float), ('boolean', bool),

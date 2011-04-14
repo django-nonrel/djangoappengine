@@ -5,11 +5,11 @@ from decimal import Decimal
 D = Decimal
 
 class DecimalTest(TestCase):
-    DECIMALS =  D("12345.6789"), D("5"), D("345.67"), D("45.6"), D("2345.678"),
+    DECIMALS = D("12345.6789"), D("5"), D("345.67"), D("45.6"), D("2345.678")
 
     def setUp(self):
         for d in self.DECIMALS:
-          DecimalModel(decimal=d).save()
+            DecimalModel(decimal=d).save()
 
     def test_filter(self):
         d = DecimalModel.objects.get(decimal=D("5.0"))

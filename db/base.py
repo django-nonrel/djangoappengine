@@ -62,8 +62,9 @@ class DatabaseOperations(NonrelDatabaseOperations):
     compiler_module = __name__.rsplit('.', 1)[0] + '.compiler'
 
     DEFAULT_MAX_DIGITS = 16
+
     def value_to_db_decimal(self, value, max_digits, decimal_places):
-        if value is None: 
+        if value is None:
             return None
         sign = value < 0 and u'-' or u''
         if sign: 
@@ -198,7 +199,8 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
     def flush(self):
         """Helper function to remove the current datastore and re-open the stubs"""
         if self.remote:
-            import random, string
+            import random
+            import string
             code = ''.join([random.choice(string.ascii_letters) for x in range(4)])
             print '\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
             print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
