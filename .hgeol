@@ -1,7 +1,11 @@
 [patterns]
+.deps = native
+.hgignore = native
+.hgeol = native
 **.txt = native
 **.pyva = native
 **.py = native
+**.ru = native
 **.c = native
 **.cpp = native
 **.cu = native
