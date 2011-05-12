@@ -5,7 +5,9 @@ from django.db.backends.util import format_number
 from djangotoolbox.db.base import NonrelDatabaseFeatures, \
     NonrelDatabaseOperations, NonrelDatabaseWrapper, NonrelDatabaseClient, \
     NonrelDatabaseValidation, NonrelDatabaseIntrospection
-from google.appengine.api.datastore import Query
+from google.appengine.ext.db.metadata import get_kinds, get_namespaces
+from google.appengine.api.datastore import Query, Delete
+from google.appengine.api.namespace_manager import set_namespace
 from urllib2 import HTTPError, URLError
 import logging
 import os
@@ -210,21 +212,27 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
             response = raw_input('Repeat: ')
             if code == response:
                 print 'Deleting...'
-                from django.db import models
-                from google.appengine.api import datastore as ds
-                for model in models.get_models():
-                    print 'Deleting %s...' % model._meta.db_table
-                    while True:
-                        data = ds.Query(model._meta.db_table, keys_only=True).Get(200)
-                        if not data:
-                            break
-                        ds.Delete(data)
+                delete_all_entities()
                 print "Datastore flushed! Please check your dashboard's " \
                       'datastore viewer for any remaining entities and remove ' \
                       'all unneeded indexes with manage.py vacuum_indexes.'
             else:
                 print 'Aborting'
                 exit()
+#        elif on_production_server or have_appserver:
+#            delete_all_entities()
         else:
             destroy_datastore(self._get_paths())
         self._setup_stubs()
+
+def delete_all_entities():
+    for namespace in get_namespaces():
+        set_namespace(namespace)
+        for kind in get_kinds():
+            if kind.startswith('__'):
+                continue
+            while True:
+                data = Query(kind=kind, keys_only=True).Get(200)
+                if not data:
+                    break
+                Delete(data)
