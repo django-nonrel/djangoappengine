@@ -20,7 +20,7 @@ import sys
 
 from django.db import connections
 from ...boot import PROJECT_DIR
-from ...db.base import DatabaseWrapper
+from ...db.base import DatabaseWrapper, get_datastore_paths
 from django.core.management.base import BaseCommand
 from django.core.exceptions import ImproperlyConfigured
 
@@ -64,7 +64,7 @@ def start_dev_appserver(argv):
     for name in connections:
         connection = connections[name]
         if isinstance(connection, DatabaseWrapper):
-            for key, path in connection._get_paths().items():
+            for key, path in get_datastore_paths(connection.settings_dict).items():
                 # XXX/TODO: Remove this when SDK 1.4.3 is released
                 if key == 'prospective_search_path':
                     continue
