@@ -1,4 +1,5 @@
 from .db_settings import get_model_indexes
+from .stubs import stub_manager
 from djangotoolbox.db.creation import NonrelDatabaseCreation
 
 class StringType(object):
@@ -30,13 +31,13 @@ class DatabaseCreation(NonrelDatabaseCreation):
 
     data_types = get_data_types()
 
-    def create_test_db(self, *args, **kw):
-        """Destroys the test datastore. A new store will be recreated on demand"""
-        self.destroy_test_db()
-        self.connection.use_test_datastore = True
-        self.connection.flush()
+    def _create_test_db(self, *args, **kw):
+        self._had_test_stubs = stub_manager.active_stubs != 'test'
+        if self._had_test_stubs:
+            stub_manager.activate_test_stubs()
 
-    def destroy_test_db(self, *args, **kw):
-        """Destroys the test datastore files."""
-        from .base import destroy_datastore, get_test_datastore_paths
-        destroy_datastore(get_test_datastore_paths(self.connection.settings_dict))
+    def _destroy_test_db(self, *args, **kw):
+        if self._had_test_stubs:
+            stub_manager.deactivate_test_stubs()
+            stub_manager.setup_stubs(self.connection)
+        del self._had_test_stubs
