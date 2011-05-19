@@ -5,7 +5,6 @@ from .expressions import ExpressionEvaluator
 import datetime
 import sys
 
-from django.db.models import F
 from django.db.models.sql import aggregates as sqlaggregates
 from django.db.models.sql.constants import LOOKUP_SEP, MULTI, SINGLE
 from django.db.models.sql.where import AND, OR
