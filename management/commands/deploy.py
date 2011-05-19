@@ -8,7 +8,7 @@ import time
 
 PRE_DEPLOY_COMMANDS = ()
 if 'mediagenerator' in settings.INSTALLED_APPS:
-    PRE_DEPLOY_COMMANDS += ('mediagenerator',)
+    PRE_DEPLOY_COMMANDS += ('generatemedia',)
 PRE_DEPLOY_COMMANDS = getattr(settings, 'PRE_DEPLOY_COMMANDS',
                               PRE_DEPLOY_COMMANDS)
 
