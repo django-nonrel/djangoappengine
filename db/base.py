@@ -219,8 +219,6 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
             else:
                 print 'Aborting'
                 exit()
-#        elif on_production_server or have_appserver:
-#            delete_all_entities()
         else:
             destroy_datastore(self._get_paths())
         self._setup_stubs()

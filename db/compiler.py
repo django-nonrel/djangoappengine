@@ -1,8 +1,11 @@
 from .db_settings import get_model_indexes
+from .utils import commit_locked
+from .expressions import ExpressionEvaluator
 
 import datetime
 import sys
 
+from django.db.models import F
 from django.db.models.sql import aggregates as sqlaggregates
 from django.db.models.sql.constants import LOOKUP_SEP, MULTI, SINGLE
 from django.db.models.sql.where import AND, OR
@@ -468,7 +471,52 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
         return key.id_or_name()
 
 class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
-    pass
+    def execute_sql(self, result_type=MULTI):
+        # modify query to fetch pks only and then execute the query
+        # to get all pks 
+        self.query.add_immediate_loading(['id'])
+        pks = [row for row in self.results_iter()]
+        self.update_entities(pks)
+        return len(pks)
+    
+    def update_entities(self, pks):
+        for pk in pks:
+            self.update_entity(pk[0])
+    
+    @commit_locked    
+    def update_entity(self, pk):
+        gae_query = self.build_query()
+        key = create_key(self.query.get_meta().db_table, pk)
+        entity = Get(key)
+        if not gae_query.matches_filters(entity):
+            return
+        
+        qn = self.quote_name_unless_alias
+        update_dict = {}
+        for field, o, value in self.query.values:
+            if hasattr(value, 'prepare_database_save'):
+                value = value.prepare_database_save(field)
+            else:
+                value = field.get_db_prep_save(value, connection=self.connection)
+            
+            if hasattr(value, "evaluate"):
+                assert not value.negated
+                assert not value.subtree_parents
+                value = ExpressionEvaluator(value, self.query, entity,
+                                                allow_joins=False)
+                
+            if hasattr(value, 'as_sql'):
+                # evaluate expression and return the new value
+                val = value.as_sql(qn, self.connection)
+                update_dict[field] = val
+            else:
+                update_dict[field] = value
+
+        for field, value in update_dict.iteritems():
+            db_type = field.db_type(connection=self.connection)
+            entity[qn(field.column)] = self.convert_value_for_db(db_type, value)
+
+        key = Put(entity)
 
 class SQLDeleteCompiler(NonrelDeleteCompiler, SQLCompiler):
     pass
