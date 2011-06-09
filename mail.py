@@ -72,7 +72,12 @@ class EmailBackend(BaseEmailBackend):
 
     def _defer_message(self, message):
         from google.appengine.ext import deferred
-        deferred.defer(_send_deferred, message, fail_silently=self.fail_silently)
+        from django.conf import settings
+        queue_name = getattr(settings, 'EMAIL_QUEUE_NAME', 'default')
+        deferred.defer(_send_deferred, 
+                       message, 
+                       fail_silently=self.fail_silently,
+                       _queue=queue_name)
 
 class AsyncEmailBackend(EmailBackend):
     can_defer = True

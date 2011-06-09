@@ -31,6 +31,9 @@ if on_production_server:
 else:
     EMAIL_BACKEND = 'djangoappengine.mail.EmailBackend'
 
+# Specify a queue name for the async. email backend
+EMAIL_QUEUE_NAME = 'default'
+
 PREPARE_UPLOAD_BACKEND = 'djangoappengine.storage.prepare_upload'
 SERVE_FILE_BACKEND = 'djangoappengine.storage.serve_file'
 DEFAULT_FILE_STORAGE = 'djangoappengine.storage.BlobstoreStorage'
