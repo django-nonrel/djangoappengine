@@ -26,7 +26,7 @@ class Command(BaseRunserverCommand):
         make_option('--debug_imports', action='store_true', default=False,
             help='Prints debugging messages related to importing modules, including \
                 search paths and errors.'),
-        make_option('--clear_datastore', action='store_true', default=False,
+        make_option('-c', '--clear_datastore', action='store_true', default=False,
             help='Clears the datastore data and history files before starting the web server.'),
         make_option('--require_indexes', action='store_true', default=False,
             help="""Disables automatic generation of entries in the index.yaml file. Instead, when
@@ -66,6 +66,14 @@ class Command(BaseRunserverCommand):
         sys.modules['__main__'] = dev_appserver_main
         return super(Command, self).create_parser(prog_name, subcommand)
 
+    def run_from_argv(self, argv):
+        """
+        Captures the program name, usually "manage.py"
+        """
+
+        self.progname = argv[0]
+        super(Command, self).run_from_argv(argv)
+
     def run(self, *args, **options):
         """
         Starts the App Engine dev_appserver program for the Django project.
@@ -82,9 +90,6 @@ class Command(BaseRunserverCommand):
             args.extend(["--address", self.addr])
         if self.port:
             args.extend(["--port", self.port])
-
-        #progname = argv[0]
-        progname = "manage.py" # TODO: need to find a way to properly pass this here
 
         # Add email settings
         from django.conf import settings
@@ -125,4 +130,4 @@ class Command(BaseRunserverCommand):
         logging.getLogger().setLevel(logging.INFO)
 
         # Append the current working directory to the arguments.
-        dev_appserver_main.main([progname] + args + [PROJECT_DIR])
+        dev_appserver_main.main([self.progname] + args + [PROJECT_DIR])
