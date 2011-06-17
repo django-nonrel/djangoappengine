@@ -28,6 +28,8 @@ class Command(BaseRunserverCommand):
                 search paths and errors.'),
         make_option('-c', '--clear_datastore', action='store_true', default=False,
             help='Clears the datastore data and history files before starting the web server.'),
+        make_option('--high_replication', action='store_true', default=False,
+            help='Use the high replication datastore consistency model.'),
         make_option('--require_indexes', action='store_true', default=False,
             help="""Disables automatic generation of entries in the index.yaml file. Instead, when
                     the application makes a query that requires that its index be defined in the
@@ -115,7 +117,7 @@ class Command(BaseRunserverCommand):
 
         # Process the rest of the options here
         bool_options = ['debug', 'debug_imports', 'clear_datastore', 'require_indexes',
-                        'enable_sendmail', ]
+                        'high_replication', 'enable_sendmail', ]
         for opt in bool_options:
             if options[opt] != False:
                 args.append("--%s" % opt)
