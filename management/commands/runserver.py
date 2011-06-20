@@ -93,6 +93,10 @@ class Command(BaseRunserverCommand):
         if self.port:
             args.extend(["--port", self.port])
 
+        # If runserver is called using handle(), progname will not be set
+        if not hasattr(self, 'progname'):
+            self.progname = "manage.py"
+
         # Add email settings
         from django.conf import settings
         if not options.get('smtp_host', None) and not options.get('enable_sendmail', None):
