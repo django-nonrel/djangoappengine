@@ -126,7 +126,7 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
                 delete_all_entities()
                 print "Datastore flushed! Please check your dashboard's " \
                       'datastore viewer for any remaining entities and remove ' \
-                      'all unneeded indexes with manage.py vacuum_indexes.'
+                      'all unneeded indexes with appcfg.py vacuum_indexes.'
             else:
                 print 'Aborting'
                 exit()
