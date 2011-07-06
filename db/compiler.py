@@ -118,7 +118,10 @@ class GAEQuery(NonrelQuery):
             yield self._make_entity(entity)
 
         if executed and not isinstance(query, MultiQuery):
-            self.query._gae_cursor = query.GetCompiledCursor()
+            try:
+                self.query._gae_cursor = query.GetCompiledCursor()
+            except:
+                pass
 
     @safe_call
     def count(self, limit=None):
