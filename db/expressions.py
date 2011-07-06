@@ -28,7 +28,7 @@ class ExpressionEvaluator(SQLEvaluator):
             else:
                 value = child
 
-            if value:
+            if value is not None:
                 values.append(value)
 
         return OPERATION_MAP[node.connector](*values)
