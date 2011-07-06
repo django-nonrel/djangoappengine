@@ -473,7 +473,8 @@ class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
     def execute_sql(self, result_type=MULTI):
         # modify query to fetch pks only and then execute the query
         # to get all pks 
-        self.query.add_immediate_loading(['id'])
+        pk = self.query.model._meta.pk.name
+        self.query.add_immediate_loading([pk])
         pks = [row for row in self.results_iter()]
         self.update_entities(pks)
         return len(pks)
