@@ -53,6 +53,8 @@ class Command(BaseRunserverCommand):
             help='The username to use with the SMTP server for sending email messages.'),
         make_option('--smtp_password',
             help='The password to use with the SMTP server for sending email messages.'),
+        make_option('--use_sqlite', action='store_true', default=False,
+            help='Use the new, SQLite datastore stub.'),
     )
 
     help = 'Runs a copy of the App Engine development server.'
@@ -106,6 +108,7 @@ class Command(BaseRunserverCommand):
                         '--smtp_password', settings.EMAIL_HOST_PASSWORD])
 
         # Pass the application specific datastore location to the server.
+        preset_options = {}
         for name in connections:
             connection = connections[name]
             if isinstance(connection, DatabaseWrapper):
@@ -117,11 +120,13 @@ class Command(BaseRunserverCommand):
                     arg = '--' + key
                     if arg not in args:
                         args.extend([arg, path])
+                # Get dev_appserver option presets, to be applied below
+                preset_options = connection.settings_dict.get('DEV_APPSERVER_OPTIONS', {})
                 break
 
         # Process the rest of the options here
         bool_options = ['debug', 'debug_imports', 'clear_datastore', 'require_indexes',
-                        'high_replication', 'enable_sendmail', ]
+                        'high_replication', 'enable_sendmail', 'use_sqlite',]
         for opt in bool_options:
             if options[opt] != False:
                 args.append("--%s" % opt)
@@ -131,6 +136,16 @@ class Command(BaseRunserverCommand):
         for opt in str_options:
             if options.get(opt, None) != None:
                 args.extend(["--%s" % opt, options[opt]])
+
+        # Fill any non-overridden options with presets from settings
+        for opt, value in preset_options.items():
+            arg = "--%s" % opt
+            if arg not in args:
+                if value and opt in bool_options:
+                    args.append(arg)
+                elif opt in str_options:
+                    args.extend([arg, value])
+                # TODO: issue warning about bogus option key(s)?
 
         # Reset logging level to INFO as dev_appserver will spew tons of debug logs
         logging.getLogger().setLevel(logging.INFO)

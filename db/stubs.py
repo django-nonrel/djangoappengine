@@ -53,6 +53,7 @@ class StubManager(object):
         from google.appengine.tools import dev_appserver_main
         args = dev_appserver_main.DEFAULT_ARGS.copy()
         args.update(get_datastore_paths(connection.settings_dict))
+        args.update(connection.settings_dict.get('DEV_APPSERVER_OPTIONS', {}))
         log_level = logging.getLogger().getEffectiveLevel()
         logging.getLogger().setLevel(logging.WARNING)
         from google.appengine.tools import dev_appserver
