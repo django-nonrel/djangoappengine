@@ -1,5 +1,2 @@
-[repos]
-djangotoolbox = https://bitbucket.org/wkornewald/djangotoolbox
-
 [links]
 djangoappengine = djangoappengine
