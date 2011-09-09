@@ -1,7 +1,7 @@
 from .testmodels import DecimalModel
 from django.test import TestCase
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 D = Decimal
 
 class DecimalTest(TestCase):
@@ -28,3 +28,13 @@ class DecimalTest(TestCase):
         rows = DecimalModel.objects.all().order_by('decimal')
         values = list(d.decimal for d in rows)
         self.assertEquals(values, sorted(values))
+
+    def test_sign_extend(self):
+        DecimalModel(decimal=D('-0.0')).save()
+
+        try:
+            # if we've written a valid string we should be able to
+            # retrieve the DecimalModel object without error
+            DecimalModel.objects.filter(decimal__lt=1)[0]
+        except InvalidOperation:
+            self.assertTrue(False)

@@ -48,10 +48,14 @@ class DatabaseOperations(NonrelDatabaseOperations):
     def value_to_db_decimal(self, value, max_digits, decimal_places):
         if value is None:
             return None
-        sign = value < 0 and u'-' or u''
-        if sign: 
+
+        if value.is_signed():
+            sign = u'-'
             value = abs(value)
-        if max_digits is None: 
+        else:
+            sign = u''
+
+        if max_digits is None:
             max_digits = self.DEFAULT_MAX_DIGITS
 
         if decimal_places is None:
