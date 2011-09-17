@@ -25,6 +25,35 @@ if 'django' in sys.modules and sys.modules['django'].VERSION < (1, 2):
 from djangoappengine.boot import setup_env, setup_logging, env_ext
 setup_env()
 
+def validate_models():
+    """Since BaseRunserverCommand is only run once, we need to call
+    model valdidation here to ensure it is run every time the code
+    changes.
+
+    """
+    import logging
+    from django.core.management.validation import get_validation_errors
+    try:
+        from cStringIO import StringIO
+    except ImportError:
+        from StringIO import StringIO
+
+    logging.info("Validating models...")
+
+    s = StringIO()
+    num_errors = get_validation_errors(s, None)
+
+    if num_errors:
+        s.seek(0)
+        error_text = s.read()
+        logging.critical("One or more models did not validate:\n%s" % error_text)
+    else:
+        logging.info("All models validated.")
+
+from djangoappengine.utils import on_production_server
+if not on_production_server:
+    validate_models()
+
 from django.core.handlers.wsgi import WSGIHandler
 from google.appengine.ext.webapp.util import run_wsgi_app
 from django.conf import settings
