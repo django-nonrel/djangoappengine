@@ -24,7 +24,9 @@ class FilterTest(TestCase):
                 FilterTest.emails, FilterTest.datetimes)):
             # ensure distinct times when saving entities
             time.sleep(0.01)
-            self.last_save_time = datetime.datetime.now().time()
+            self.last_save_datetime = datetime.datetime.now()
+            self.last_save_time = self.last_save_datetime.time()
+
             ordered_instance = OrderedModel(priority=index, pk=index + 1)
             ordered_instance.save()
             FieldsWithOptionsModel(floating_point=float,
@@ -388,9 +390,7 @@ class FilterTest(TestCase):
                            'rasengan@naruto.com', 'rinnengan@sage.de'])
 
         # test range on date/datetime objects
-        start_time = datetime.time(self.last_save_time.hour,
-            self.last_save_time.minute - 1, self.last_save_time.second,
-            self.last_save_time.microsecond)
+        start_time = self.last_save_datetime - datetime.timedelta(minutes=1)
         self.assertEquals([entity.email for entity in
                             FieldsWithOptionsModel.objects.filter(
                             time__range=(start_time, self.last_save_time)).order_by('time')],
