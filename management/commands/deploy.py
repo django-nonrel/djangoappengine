@@ -1,4 +1,5 @@
 from ...boot import PROJECT_DIR
+from ...utils import appconfig
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
@@ -22,6 +23,8 @@ def run_appcfg(argv):
 
     new_args = argv[:]
     new_args[1] = 'update'
+    if appconfig.runtime != 'python':
+        new_args.insert(1, '-R')
     new_args.append(PROJECT_DIR)
     syncdb = True
     if '--nosyncdb' in new_args:

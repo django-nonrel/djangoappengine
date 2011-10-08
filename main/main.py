@@ -65,6 +65,14 @@ def log_traceback(*args, **kwargs):
 from django.core import signals
 signals.got_request_exception.connect(log_traceback)
 
+# Create a Django application for WSGI
+application = WSGIHandler()
+
+# Add the staticfiles handler if necessary
+if settings.DEBUG and 'django.contrib.staticfiles' in settings.INSTALLED_APPS:
+    from django.contrib.staticfiles.handlers import StaticFilesHandler
+    application = StaticFilesHandler(application)
+
 def real_main():
     # Reset path and environment variables
     global path_backup
@@ -74,14 +82,6 @@ def real_main():
         path_backup = sys.path[:]
     os.environ.update(env_ext)
     setup_logging()
-
-    # Create a Django application for WSGI
-    application = WSGIHandler()
-
-    # Add the staticfiles handler if necessary
-    if settings.DEBUG and 'django.contrib.staticfiles' in settings.INSTALLED_APPS:
-        from django.contrib.staticfiles.handlers import StaticFilesHandler
-        application = StaticFilesHandler(application)
 
     # Run the WSGI CGI handler with that application.
     run_wsgi_app(application)

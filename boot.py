@@ -90,7 +90,9 @@ def find_commands(management_dir):
                 [os.path.join(management_dir, 'commands')]) if not ispkg]
 
 def setup_threading():
-    # XXX: GAE's threading.local doesn't work correctly with subclassing
+    if sys.version_info >= (2, 7):
+        return
+    # XXX: On Python 2.5 GAE's threading.local doesn't work correctly with subclassing
     try:
         from django.utils._threading_local import local
         import threading
