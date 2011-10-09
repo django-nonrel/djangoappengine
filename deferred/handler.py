@@ -15,6 +15,7 @@ for app in settings.INSTALLED_APPS:
         pass
 
 from google.appengine.ext.deferred.handler import main
+from google.appengine.ext.deferred.deferred import application
 
 main = make_profileable(main)
 
