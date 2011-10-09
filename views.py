@@ -8,7 +8,7 @@ def warmup(request):
     Just add this view to your main urls.py.
     """
     for app in settings.INSTALLED_APPS:
-        for name in ('urls', 'views'):
+        for name in ('urls', 'views', 'models'):
             try:
                 import_module('%s.%s' % (app, name))
             except ImportError:
