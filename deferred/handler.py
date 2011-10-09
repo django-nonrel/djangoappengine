@@ -14,7 +14,7 @@ for app in settings.INSTALLED_APPS:
     except ImportError:
         pass
 
-from google.appengine.ext.deferred.handler import APP as application, main
+from google.appengine.ext.deferred.handler import main
 
 main = make_profileable(main)
 
