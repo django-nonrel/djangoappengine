@@ -11,7 +11,7 @@ for app in settings.INSTALLED_APPS:
     except ImportError:
         pass
 
-from google.appengine.ext.mapreduce.main import APP as application, main
+from google.appengine.ext.mapreduce.main import main
 
 _main = make_profileable(main)
 
