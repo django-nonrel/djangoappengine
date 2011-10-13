@@ -52,6 +52,8 @@ NEGATION_MAP = {
     #'exact': '!=', # this might actually become individual '<' and '>' queries
 }
 
+NOT_PROVIDED = object()
+
 def safe_call(func):
     @wraps(func)
     def _func(*args, **kwargs):
@@ -124,13 +126,18 @@ class GAEQuery(NonrelQuery):
                 pass
 
     @safe_call
-    def count(self, limit=None):
+    def count(self, limit=NOT_PROVIDED):
         if self.pk_filters is not None:
             return len(self.get_matching_pk(0, limit))
         if self.excluded_pks:
             return len(list(self.fetch(0, 2000)))
+        # The datastore's Count() method has a 'limit' kwarg, which has
+        # a default value (obviously).  This value can be overridden to anything
+        # you like, and importantly can be overridden to unlimited by passing
+        # a value of None.  Hence *this* method has a default value of
+        # NOT_PROVIDED, rather than a default value of None
         kw = {}
-        if limit is not None:
+        if limit is not NOT_PROVIDED:
             kw['limit'] = limit
         return self._build_query().Count(**kw)
 
@@ -475,25 +482,25 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
 class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
     def execute_sql(self, result_type=MULTI):
         # modify query to fetch pks only and then execute the query
-        # to get all pks 
+        # to get all pks
         pk = self.query.model._meta.pk.name
         self.query.add_immediate_loading([pk])
         pks = [row for row in self.results_iter()]
         self.update_entities(pks)
         return len(pks)
-    
+
     def update_entities(self, pks):
         for pk in pks:
             self.update_entity(pk[0])
-    
-    @commit_locked    
+
+    @commit_locked
     def update_entity(self, pk):
         gae_query = self.build_query()
         key = create_key(self.query.get_meta().db_table, pk)
         entity = Get(key)
         if not gae_query.matches_filters(entity):
             return
-        
+
         qn = self.quote_name_unless_alias
         update_dict = {}
         for field, o, value in self.query.values:
@@ -501,13 +508,13 @@ class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
                 value = value.prepare_database_save(field)
             else:
                 value = field.get_db_prep_save(value, connection=self.connection)
-            
+
             if hasattr(value, "evaluate"):
                 assert not value.negated
                 assert not value.subtree_parents
                 value = ExpressionEvaluator(value, self.query, entity,
                                                 allow_joins=False)
-                
+
             if hasattr(value, 'as_sql'):
                 # evaluate expression and return the new value
                 val = value.as_sql(qn, self.connection)
