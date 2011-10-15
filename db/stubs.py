@@ -4,7 +4,10 @@ from urllib2 import HTTPError, URLError
 import logging
 import time
 
-REMOTE_API_SCRIPT = '$PYTHON_LIB/google/appengine/ext/remote_api/handler.py'
+REMOTE_API_SCRIPTS = (
+    '$PYTHON_LIB/google/appengine/ext/remote_api/handler.py',
+    'google.appengine.ext.remote_api.handler.application',
+)
 
 def auth_func():
     import getpass
@@ -67,7 +70,7 @@ class StubManager(object):
         if not connection.remote_api_path:
             from ..utils import appconfig
             for handler in appconfig.handlers:
-                if handler.script == REMOTE_API_SCRIPT:
+                if handler.script in REMOTE_API_SCRIPTS:
                     connection.remote_api_path = handler.url.split('(', 1)[0]
                     break
         server = '%s.%s' % (connection.remote_app_id, connection.domain)
