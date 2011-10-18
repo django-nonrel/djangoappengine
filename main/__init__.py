@@ -72,3 +72,7 @@ application = WSGIHandler()
 if settings.DEBUG and 'django.contrib.staticfiles' in settings.INSTALLED_APPS:
     from django.contrib.staticfiles.handlers import StaticFilesHandler
     application = StaticFilesHandler(application)
+
+if getattr(settings, 'ENABLE_APPSTATS', False):
+    from google.appengine.ext.appstats.recording import appstats_wsgi_middleware
+    application = appstats_wsgi_middleware(application)
