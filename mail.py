@@ -26,6 +26,7 @@ class EmailBackend(BaseEmailBackend):
         """Create and return App Engine EmailMessage class from message."""
         gmsg = aeemail.EmailMessage(sender=message.from_email,
                                     to=message.to,
+                                    cc=message.cc,
                                     subject=message.subject,
                                     body=message.body)
         if message.extra_headers.get('Reply-To', None):
