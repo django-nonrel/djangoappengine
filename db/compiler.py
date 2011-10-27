@@ -439,11 +439,13 @@ class SQLCompiler(NonrelCompiler):
         elif db_type == 'longtext':
             # long text fields cannot be indexed on GAE so use GAE's database
             # type Text
-            value = Text((isinstance(value, str) and value.decode('utf-8')) or value)
+            if value is not None:
+                value = Text(value.decode('utf-8') if isinstance(value, str) else value)
         elif db_type == 'text':
-            value = (isinstance(value, str) and value.decode('utf-8')) or value
+            value = value.decode('utf-8') if isinstance(value, str) else value
         elif db_type == 'blob':
-            value = Blob(value)
+            if value is not None:
+                value = Blob(value)
         elif type(value) is str:
             # always store unicode strings
             value = value.decode('utf-8')
