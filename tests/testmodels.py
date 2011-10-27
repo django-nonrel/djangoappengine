@@ -88,3 +88,6 @@ class DecimalModel(models.Model):
 
 class SelfReferenceModel(models.Model):
     ref = models.ForeignKey('self', null=True)
+
+class NullableTextModel(models.Model):
+    text = models.TextField(null=True)

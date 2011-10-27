@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.db.utils import DatabaseError
 from django.db.models.fields import NOT_PROVIDED
-from .testmodels import FieldsWithOptionsModel
+from .testmodels import FieldsWithOptionsModel, NullableTextModel
 from google.appengine.api.datastore import Get
 from google.appengine.ext.db import Key
 from google.appengine.api.datastore_types import Text, Category, Email, Link, \
@@ -77,3 +77,11 @@ class FieldOptionsTest(TestCase):
         # TODO: check db_column option
         # TODO: change the primary key and check if a new instance with the
         # changed primary key will be saved (not in this test class)
+
+    def test_nullable_text(self):
+        # regression test for #48
+        entity = NullableTextModel(text=None)
+        entity.save()
+
+        db_entity = NullableTextModel.objects.get()
+        self.assertEquals(db_entity.text, None)
