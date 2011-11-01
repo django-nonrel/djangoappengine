@@ -15,7 +15,7 @@ import os
 DATASTORE_PATHS = {
     'datastore_path': os.path.join(DATA_ROOT, 'datastore'),
     'blobstore_path': os.path.join(DATA_ROOT, 'blobstore'),
-    'rdbms_sqlite_path': os.path.join(DATA_ROOT, 'rdbms'),
+    #'rdbms_sqlite_path': os.path.join(DATA_ROOT, 'rdbms'),
     'prospective_search_path': os.path.join(DATA_ROOT, 'prospective-search'),
 }
 
