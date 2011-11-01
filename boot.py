@@ -51,14 +51,18 @@ def setup_env():
         extra_paths = [sdk_path]
         lib = os.path.join(sdk_path, 'lib')
         # Automatically add all packages in the SDK's lib folder:
-        for dir in os.listdir(lib):
-            path = os.path.join(lib, dir)
+        for name in os.listdir(lib):
+            root = os.path.join(lib, name)
+            subdir = name
             # Package can be under 'lib/<pkg>/<pkg>/' or 'lib/<pkg>/lib/<pkg>/'
-            detect = (os.path.join(path, dir), os.path.join(path, 'lib', dir))
+            detect = (os.path.join(root, subdir), os.path.join(root, 'lib', subdir))
             for path in detect:
-                if os.path.isdir(path) and not dir == 'django':
+                if os.path.isdir(path):
                     extra_paths.append(os.path.dirname(path))
                     break
+            else:
+                if name == 'webapp2':
+                    extra_paths.append(root)
         sys.path = extra_paths + sys.path
         from google.appengine.api import apiproxy_stub_map
 
