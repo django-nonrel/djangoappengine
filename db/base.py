@@ -11,6 +11,7 @@ from google.appengine.api.datastore import Query, Delete
 from google.appengine.api.namespace_manager import set_namespace
 import logging
 import os
+import shutil
 
 DATASTORE_PATHS = {
     'datastore_path': os.path.join(DATA_ROOT, 'datastore'),
@@ -31,7 +32,10 @@ def destroy_datastore(paths):
         if not path:
             continue
         try:
-            os.remove(path)
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            else:
+                os.remove(path)
         except OSError, error:
             if error.errno != 2:
                 logging.error("Failed to clear datastore: %s" % error)
