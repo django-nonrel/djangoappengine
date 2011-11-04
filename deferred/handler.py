@@ -1,5 +1,5 @@
 # Initialize Django
-from djangoappengine.main.main import make_profileable
+from djangoappengine import main
 
 from django.utils.importlib import import_module
 from django.conf import settings
@@ -9,15 +9,11 @@ from django.conf import settings
 for app in settings.INSTALLED_APPS:
     try:
         import_module('%s.models' % (app))
-        import logging
-        logging.debug(app)
     except ImportError:
         pass
 
 from google.appengine.ext.deferred.handler import main
 from google.appengine.ext.deferred.deferred import application
-
-main = make_profileable(main)
 
 if __name__ == '__main__':
     main()

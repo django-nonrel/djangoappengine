@@ -1,5 +1,5 @@
 # Initialize Django
-from djangoappengine.main import main
+from djangoappengine import main
 
 from google.appengine.ext.appstats.ui import app as application, main
 

@@ -1,5 +1,5 @@
 # Initialize Django
-from djangoappengine.main.main import make_profileable
+from djangoappengine import main
 from django.utils.importlib import import_module
 from django.conf import settings
 
@@ -12,8 +12,6 @@ for app in settings.INSTALLED_APPS:
         pass
 
 from google.appengine.ext.mapreduce.main import APP as application, main
-
-main = make_profileable(main)
 
 if __name__ == '__main__':
     main()
