@@ -1,6 +1,6 @@
 # Initialize App Engine SDK if necessary
 try:
-    from google.appengine.api import api_proxy_stub_map
+    from google.appengine.api import apiproxy_stub_map
 except ImportError:
     from .boot import setup_env
     setup_env()
