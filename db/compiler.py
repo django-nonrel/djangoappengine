@@ -511,6 +511,7 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
 
         if not isinstance(opts.pk, GAEKeyField):
             key = key.id_or_name()
+        
         return key
 
 class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
@@ -591,7 +592,7 @@ def create_key(db_table, value):
     if isinstance(value, GAEKey):
         parent = None
         if value.parent_key is not None:
-            parent = value.parent.real_key
+            parent = value.parent_key.real_key
         return Key.from_path(db_table, value.id_or_name, parent=parent)
     if isinstance(value, (int, long)) and value < 1:
         return None

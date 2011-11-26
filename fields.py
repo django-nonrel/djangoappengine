@@ -1,5 +1,5 @@
 from django.db import models
-from google.appengine.api.datastore import Key
+from google.appengine.api.datastore import Key, datastore_errors
 from .models import GAEKey, GAEAncestorKey
 
 class GAEKeyField(models.Field):
@@ -7,35 +7,39 @@ class GAEKeyField(models.Field):
     __metaclass__ = models.SubfieldBase
 
     def __init__(self, *args, **kwargs):
-        assert kwargs.get('primary_key', False) is True, "%ss must have primary_key=True." % self.__class__.__name__
         kwargs['null'] = True
         kwargs['blank'] = True
         self.parent_key_attname = kwargs.pop('parent_key_name', None)
 
+        if self.parent_key_attname is not None and kwargs.get('primary_key', None) is None:
+            raise ValueError("Primary key must be true to set parent_key_name")
+
         super(GAEKeyField, self).__init__(*args, **kwargs)
 
     def contribute_to_class(self, cls, name):
-        assert not cls._meta.has_auto_field, "A model can't have more than one auto field."
-        super(GAEKeyField, self).contribute_to_class(cls, name)
-        cls._meta.has_auto_field = True
-        cls._meta.auto_field = self
+        if self.primary_key:
+            assert not cls._meta.has_auto_field, "A model can't have more than one auto field."
+            cls._meta.has_auto_field = True
+            cls._meta.auto_field = self
         
-        if self.parent_key_attname is not None:
-            def get_parent_key(instance, instance_type=None):
-                if instance is None:
-                    return self
-                return instance.__dict__.get(self.parent_key_attname)
+            if self.parent_key_attname is not None:
+                def get_parent_key(instance, instance_type=None):
+                    if instance is None:
+                        return self
+                    return instance.__dict__.get(self.parent_key_attname)
 
-            def set_parent_key(instance, value):
-                if instance is None:
-                    raise AttributeError("Attribute must be accessed via instance")
+                def set_parent_key(instance, value):
+                    if instance is None:
+                        raise AttributeError("Attribute must be accessed via instance")
 
-                if not isinstance(value, GAEKey):
-                    raise ValueError("parent must be a GAEKey")
+                    if not isinstance(value, GAEKey):
+                        raise ValueError("parent must be a GAEKey")
 
-                instance.__dict__[self.parent_key_attname] = value
+                    instance.__dict__[self.parent_key_attname] = value
 
-            setattr(cls, self.parent_key_attname, property(get_parent_key, set_parent_key))
+                setattr(cls, self.parent_key_attname, property(get_parent_key, set_parent_key))
+
+        super(GAEKeyField, self).contribute_to_class(cls, name)
 
     def to_python(self, value):
         if value is None:
@@ -45,14 +49,24 @@ class GAEKeyField(models.Field):
         if isinstance(value, Key):
             return GAEKey(real_key=value)
         if isinstance(value, basestring):
-            return GAEKey(real_key=Key(encoded=value))
-        return GAEKey(id_or_name=value)
+            try:
+                return GAEKey(real_key=Key(encoded=value))
+            except datastore_errors.BadKeyError:
+                pass
+        raise ValueError("this value is not allowed %s" % value)
 
     def get_prep_value(self, value):
         if value is None:
             return None
+        if isinstance(value, Key):
+            return GAEKey(real_key=value)
+        if isinstance(value, basestring):
+            try:
+                return GAEKey(real_key=Key(encoded=value))
+            except datastore_errors.BadKeyError:
+                raise ValueError("this value is not allowed %s" % value)
         if not isinstance(value, (GAEKey, GAEAncestorKey)):
-            raise ValueError('must by type GAEKey or GAEAncestorKey, not <%s>' % type(value))
+            raise ValueError('Must by type GAEKey, GAEAncestorKey, basestring. Not <%s>' % type(value))
         return value
 
     def formfield(self, **kwargs):
