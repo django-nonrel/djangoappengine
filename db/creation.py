@@ -15,12 +15,14 @@ class StringType(object):
         return self.internal_type
 
 def get_data_types():
-    # TODO: Add GAEKeyField and a corresponding db_type
     string_types = ('text', 'longtext')
     data_types = NonrelDatabaseCreation.data_types.copy()
     for name, field_type in data_types.items():
         if field_type in string_types:
             data_types[name] = StringType(field_type)
+    
+    data_types['GAEKeyField'] = 'gae_key'
+    
     return data_types
 
 class DatabaseCreation(NonrelDatabaseCreation):

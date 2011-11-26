@@ -6,3 +6,4 @@ from .order import OrderTest
 from .not_return_sets import NonReturnSetsTest
 from .decimals import DecimalTest
 from .transactions import TransactionTest
+from .keys import KeysTest

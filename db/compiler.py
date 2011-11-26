@@ -1,6 +1,8 @@
 from .db_settings import get_model_indexes
 from .utils import commit_locked
 from .expressions import ExpressionEvaluator
+from ..fields import GAEKeyField
+from ..models import GAEKey, GAEAncestorKey
 
 import datetime
 import sys
@@ -73,6 +75,7 @@ class GAEQuery(NonrelQuery):
         self.pk_filters = None
         self.excluded_pks = ()
         self.has_negated_exact_filter = False
+        self.ancestor_key = None
         self.ordering = ()
         self.gae_ordering = []
         pks_only = False
@@ -173,6 +176,14 @@ class GAEQuery(NonrelQuery):
         if column == self.query.get_meta().pk.column:
             column = '__key__'
             db_table = self.query.get_meta().db_table
+            
+            if lookup_type == 'exact' and isinstance(value, GAEAncestorKey):
+                if negated:
+                    raise DatabaseError("You can't negate an ancestor operation.")
+                if self.ancestor_key is not None:
+                    raise DatabaseError("You can't use more than one ancestor operation.")
+                self.ancestor_key = value.key()
+                return
             if lookup_type in ('exact', 'in'):
                 # Optimization: batch-get by key
                 if self.pk_filters is not None:
@@ -319,6 +330,8 @@ class GAEQuery(NonrelQuery):
     def _build_query(self):
         for query in self.gae_query:
             query.Order(*self.gae_ordering)
+            if self.ancestor_key:
+                query.Ancestor(self.ancestor_key)
         if len(self.gae_query) > 1:
             return MultiQuery(self.gae_query, self.gae_ordering)
         return self.gae_query[0]
@@ -391,24 +404,24 @@ class SQLCompiler(NonrelCompiler):
             # contain non unicode strings, nevertheless work with unicode ones)
             value = value.decode('utf-8')
         elif isinstance(value, Key):
-            # for now we do not support KeyFields thus a Key has to be the own
-            # primary key
-            # TODO: GAE: support parents via GAEKeyField
-            assert value.parent() is None, "Parents are not yet supported!"
-            if db_type == 'integer':
-                if value.id() is None:
-                    raise DatabaseError('Wrong type for Key. Expected integer, found'
-                        'None')
-                else:
-                    value = value.id()
-            elif db_type == 'text':
-                if value.name() is None:
-                    raise DatabaseError('Wrong type for Key. Expected string, found'
-                        'None')
-                else:
-                    value = value.name()
+            if db_type == 'gae_key':
+                value = GAEKey(real_key=value)
             else:
-                raise DatabaseError("%s fields cannot be keys on GAE" % db_type)
+                assert value.parent() is None, "Use GAEKeyField to enable parent keys!"
+                if db_type == 'integer':
+                    if value.id() is None:
+                        raise DatabaseError('Wrong type for Key. Expected integer, found'
+                            'None')
+                    else:
+                        value = value.id()
+                elif db_type == 'text':
+                    if value.name() is None:
+                        raise DatabaseError('Wrong type for Key. Expected string, found'
+                            'None')
+                    else:
+                        value = value.name()
+                else:
+                    raise DatabaseError("%s fields cannot be keys on GAE" % db_type)
         elif db_type == 'date' and isinstance(value, datetime.datetime):
             value = value.date()
         elif db_type == 'time' and isinstance(value, datetime.datetime):
@@ -435,7 +448,10 @@ class SQLCompiler(NonrelCompiler):
             value = Blob(pickle.dumps(value))
 
         if db_type == 'gae_key':
-            return value
+            if isinstance(value, GAEKey) and value.has_real_key():
+                return value.real_key
+            else:
+                return value
         elif db_type == 'longtext':
             # long text fields cannot be indexed on GAE so use GAE's database
             # type Text
@@ -465,21 +481,37 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
         kwds = {'unindexed_properties': unindexed_cols}
         for column, value in data.items():
             if column == opts.pk.column:
-                if isinstance(value, basestring):
+                if isinstance(value, GAEKey):
+                    if value.parent_key and value.parent_key.has_real_key():
+                        kwds['parent'] = value.parent_key.real_key
+                    if isinstance(value.id_or_name, basestring):
+                        kwds['name'] = value.id_or_name
+                    elif value.id_or_name is not None:
+                        kwds['id'] = value.id_or_name
+                elif isinstance(value, Key):
+                    kwds['parent'] = value.parent()
+                    if value.name():
+                        kwds['name'] = value.name()
+                    elif value.id():
+                        kwds['id'] = value.id()
+                elif isinstance(value, basestring):
                     kwds['name'] = value
                 else:
                     kwds['id'] = value
             elif isinstance(value, (tuple, list)) and not len(value):
-                # gae does not store emty lists (and even does not allow passing empty
+                # gae does not store empty lists (and even does not allow passing empty
                 # lists to Entity.update) so skip them
                 continue
             else:
                 gae_data[column] = value
 
-        entity = Entity(self.query.get_meta().db_table, **kwds)
+        entity = Entity(opts.db_table, **kwds)
         entity.update(gae_data)
         key = Put(entity)
-        return key.id_or_name()
+
+        if not isinstance(opts.pk, GAEKeyField):
+            key = key.id_or_name()
+        return key
 
 class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
     def execute_sql(self, result_type=MULTI):
@@ -556,6 +588,11 @@ def to_datetime(value):
             value.second, value.microsecond)
 
 def create_key(db_table, value):
+    if isinstance(value, GAEKey):
+        parent = None
+        if value.parent_key is not None:
+            parent = value.parent.real_key
+        return Key.from_path(db_table, value.id_or_name, parent=parent)
     if isinstance(value, (int, long)) and value < 1:
         return None
     return Key.from_path(db_table, value)
