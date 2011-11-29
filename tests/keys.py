@@ -147,12 +147,36 @@ class KeysTest(TestCase):
     def testForeignKeyWithGAEKey(self):
         parent = ParentModel()
         parent.save()
-        
+
         fkm = ForeignKeyModel()
         fkm.relation = parent
         fkm.save()
-        
+
         results = list(ForeignKeyModel.objects.filter(relation=parent))
         self.assertEquals(1, len(results))
         self.assertEquals(results[0].pk, fkm.pk)
 
+    def testPrimaryKeyQuery(self):
+        parent = ParentModel()
+        parent.save()
+
+        db_parent = ParentModel.objects.get(pk=parent.pk)
+
+        self.assertEquals(parent.pk, db_parent.pk)
+
+    def testPrimaryKeyQueryStringKey(self):
+        parent = ParentModel()
+        parent.save()
+
+        db_parent = ParentModel.objects.get(pk=str(parent.pk))
+
+        self.assertEquals(parent.pk, db_parent.pk)
+
+    def testPrimaryKeyQueryIntKey(self):
+        parent = ParentModel()
+        parent.save()
+
+        db_parent = ParentModel.objects.get(pk=int(str(parent.pk)))
+
+        self.assertEquals(parent.pk, db_parent.pk)
+    
