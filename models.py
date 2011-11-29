@@ -38,7 +38,7 @@ class GAEKey(object):
 
     def _get_real_key(self):
         if self._real_key is None:
-            raise ValueError("Incomplete key, please save the entity first.")
+            raise AttributeError("Incomplete key, please save the entity first.")
         return self._real_key
     real_key = property(_get_real_key)
 
@@ -63,4 +63,4 @@ class GAEKey(object):
         return hash(self._real_key)
 
     def __str__(self):
-        return str(self._real_key)
+        return str(self.id_or_name)
