@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from google.appengine.api.datastore import Key, datastore_errors
 from .models import GAEKey, GAEAncestorKey
@@ -52,22 +53,16 @@ class GAEKeyField(models.Field):
             try:
                 return GAEKey(real_key=Key(encoded=value))
             except datastore_errors.BadKeyError:
-                pass
-        raise ValueError("this value is not allowed %s" % value)
+                return GAEKey(real_key=Key.from_path(self.model._meta.db_table, long(value)))
+        if isinstance(value, (int, long)):
+            return GAEKey(real_key=Key.from_path(self.model._meta.db_table, value))
+
+        raise ValidationError("GAEKeyField does not accept %s" % type(value))
 
     def get_prep_value(self, value):
-        if value is None:
-            return None
-        if isinstance(value, Key):
-            return GAEKey(real_key=value)
-        if isinstance(value, basestring):
-            try:
-                return GAEKey(real_key=Key(encoded=value))
-            except datastore_errors.BadKeyError:
-                raise ValueError("this value is not allowed %s" % value)
-        if not isinstance(value, (GAEKey, GAEAncestorKey)):
-            raise ValueError('Must by type GAEKey, GAEAncestorKey, basestring. Not <%s>' % type(value))
-        return value
+        if isinstance(value, GAEAncestorKey):
+            return value        
+        return self.to_python(value)
 
     def formfield(self, **kwargs):
         return None
