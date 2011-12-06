@@ -1,8 +1,6 @@
 from django.db import models
 from google.appengine.api.datastore import Key
 
-# TODO: look for better exceptions to raise
-
 class GAEAncestorKey(object):
     def __init__(self, key):
         if not isinstance(key, Key):
@@ -51,10 +49,21 @@ class GAEKey(object):
     def __cmp__(self, other):
         if not isinstance(other, GAEKey):
             return 1
-        if self._real_key is None or other._real_key is None:
-            raise ValueError("You can't compare unsaved keys.")
+        
+        if self._real_key is not None and other._real_key is not None:
+            return cmp(self._real_key, other._real_key)
+        
+        if self._id_or_name is None or other._id_or_name is None:
+            raise ValueError("You can't compare unsaved keys: %s %s" % (self, other))
 
-        return cmp(self._real_key, other._real_key)
+        result = 0
+        if self._parent_key is not None:
+            result = cmp(self._parent_key, other._parent_key)
+        
+        if result == 0:
+            result = cmp(self._id_or_name, other._id_or_name)
+        
+        return result
 
     def __hash__(self):
         if self._real_key is None:
