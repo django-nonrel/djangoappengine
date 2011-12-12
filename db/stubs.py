@@ -79,7 +79,7 @@ class StubManager(object):
         logging.info('Setting up remote_api for "%s" at %s' %
                      (connection.remote_app_id, remote_url))
         if not have_appserver:
-            print('Connecting to remote_api handler.\n\n'
+            logging.info('Connecting to remote_api handler.\n\n'
                   'IMPORTANT: Check your login method settings in the '
                   'App Engine Dashboard if you have problems logging in. '
                   'Login is only supported for Google Accounts.\n')
@@ -94,7 +94,7 @@ class StubManager(object):
                 remote_api_stub.MaybeInvokeAuthentication()
             except HTTPError, e:
                 if not have_appserver:
-                    print 'Retrying in %d seconds...' % retry_delay
+                    logging.info('Retrying in %d seconds...' % retry_delay)
                 time.sleep(retry_delay)
                 retry_delay *= 2
             else:
