@@ -18,6 +18,8 @@ from django.utils.encoding import smart_str, force_unicode
 from google.appengine.ext.blobstore import BlobInfo, BlobKey, delete, \
     create_upload_url, BLOB_KEY_HEADER, BLOB_RANGE_HEADER, BlobReader
 
+from google.appengine.api import files
+import mimetypes
 
 def prepare_upload(request, url, **kwargs):
     return create_upload_url(url), {}
@@ -58,6 +60,16 @@ class BlobstoreStorage(Storage):
             data = content.file.blobstore_info
         elif hasattr(content, 'blobstore_info'):
             data = content.blobstore_info
+        elif isinstance(content, File):
+            file_name = files.blobstore.create(mime_type='application/octet-stream')
+
+            with files.open(file_name, 'a') as f:
+                for chunk in content.chunks():
+                    f.write(chunk)
+
+            files.finalize(file_name)
+
+            data = files.blobstore.get_blob_key(file_name)
         else:
             raise ValueError("The App Engine storage backend only supports "
                              "BlobstoreFile instances or File instances "
@@ -85,6 +97,9 @@ class BlobstoreStorage(Storage):
 
     def url(self, name):
         raise NotImplementedError()
+
+    def created_time(self, name):
+        return self._get_blobinfo(name).creation
 
     def get_valid_name(self, name):
         return force_unicode(name).strip().replace('\\', '/')
