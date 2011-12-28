@@ -153,11 +153,8 @@ class GAEQuery(NonrelQuery):
     @safe_call
     def order_by(self, ordering):
         self.ordering = ordering
-        for order in self.ordering:
-            if order.startswith('-'):
-                order, direction = order[1:], Query.DESCENDING
-            else:
-                direction = Query.ASCENDING
+        for order, descending in self.ordering:
+            direction = Query.DESCENDING if descending else Query.ASCENDING
             if order == self.query.get_meta().pk.column:
                 order = '__key__'
             self.gae_ordering.append((order, direction))
