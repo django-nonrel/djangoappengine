@@ -8,6 +8,7 @@ class GAEAncestorKey(object):
 
         self._key = key
 
+    @property
     def key(self):
         return self._key
 
@@ -26,25 +27,22 @@ class GAEKey(object):
                 self._parent_key = GAEKey(real_key=real_key.parent())
             self._id_or_name = real_key.id_or_name()
 
-    def _get_id_or_name(self):
+    def id_or_name(self):
         return self._id_or_name
-    id_or_name = property(_get_id_or_name)
 
-    def _get_parent_key(self):
+    def parent_key(self):
         return self._parent_key
-    parent_key = property(_get_parent_key)
 
-    def _get_real_key(self):
+    def real_key(self):
         if self._real_key is None:
             raise AttributeError("Incomplete key, please save the entity first.")
         return self._real_key
-    real_key = property(_get_real_key)
 
     def has_real_key(self):
         return self._real_key is not None
 
     def as_ancestor(self):
-        return GAEAncestorKey(self._get_real_key())
+        return GAEAncestorKey(self.real_key())
 
     def __cmp__(self, other):
         if not isinstance(other, GAEKey):
@@ -72,4 +70,4 @@ class GAEKey(object):
         return hash(self._real_key)
 
     def __str__(self):
-        return str(self.id_or_name)
+        return str(self._id_or_name)

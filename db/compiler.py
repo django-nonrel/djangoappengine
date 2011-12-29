@@ -449,7 +449,7 @@ class SQLCompiler(NonrelCompiler):
 
         if db_type == 'gae_key':
             if isinstance(value, GAEKey) and value.has_real_key():
-                return value.real_key
+                return value.real_key()
             else:
                 return value
         elif db_type == 'longtext':
@@ -482,12 +482,12 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
         for column, value in data.items():
             if column == opts.pk.column:
                 if isinstance(value, GAEKey):
-                    if value.parent_key and value.parent_key.has_real_key():
-                        kwds['parent'] = value.parent_key.real_key
-                    if isinstance(value.id_or_name, basestring):
-                        kwds['name'] = value.id_or_name
-                    elif value.id_or_name is not None:
-                        kwds['id'] = value.id_or_name
+                    if value.parent_key() and value.parent_key().has_real_key():
+                        kwds['parent'] = value.parent_key().real_key()
+                    if isinstance(value.id_or_name(), basestring):
+                        kwds['name'] = value.id_or_name()
+                    elif value.id_or_name() is not None:
+                        kwds['id'] = value.id_or_name()
                 elif isinstance(value, Key):
                     kwds['parent'] = value.parent()
                     if value.name():
@@ -591,9 +591,9 @@ def to_datetime(value):
 def create_key(db_table, value):
     if isinstance(value, GAEKey):
         parent = None
-        if value.parent_key is not None:
-            parent = value.parent_key.real_key
-        return Key.from_path(db_table, value.id_or_name, parent=parent)
+        if value.parent_key() is not None:
+            parent = value.parent_key().real_key()
+        return Key.from_path(db_table, value.id_or_name(), parent=parent)
     if isinstance(value, (int, long)) and value < 1:
         return None
     return Key.from_path(db_table, value)
