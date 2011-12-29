@@ -54,8 +54,8 @@ class KeysTest(TestCase):
         
         self.assertNotEquals(parent.pk, orig_parent_pk)
         self.assertNotEquals(child.pk, orig_child_pk)
-        self.assertEquals(child.pk.parent_key, parent.pk)
-        self.assertEquals(child.pk.parent_key.real_key(), parent.pk.real_key())
+        self.assertEquals(child.pk.parent_key(), parent.pk)
+        self.assertEquals(child.pk.parent_key().real_key(), parent.pk.real_key())
     
     def testAncestorFilterQuery(self):
         parent = ParentModel()

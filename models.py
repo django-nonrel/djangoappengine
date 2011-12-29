@@ -8,7 +8,6 @@ class GAEAncestorKey(object):
 
         self._key = key
 
-    @property
     def key(self):
         return self._key
 
