@@ -1,4 +1,5 @@
 from ..utils import appid, have_appserver
+from ..boot import PROJECT_DIR
 from google.appengine.ext.testbed import Testbed
 from urllib2 import HTTPError, URLError
 import logging
@@ -38,7 +39,7 @@ class StubManager(object):
         self.active_stubs = 'test'
         self.testbed.init_datastore_v3_stub()
         self.testbed.init_memcache_stub()
-        self.testbed.init_taskqueue_stub()
+        self.testbed.init_taskqueue_stub(root_path=PROJECT_DIR)
         self.testbed.init_urlfetch_stub()
         self.testbed.init_user_stub()
         self.testbed.init_xmpp_stub()
