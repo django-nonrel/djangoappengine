@@ -56,7 +56,7 @@ class Command(BaseRunserverCommand):
         make_option('--use_sqlite', action='store_true', default=False,
             help='Use the new, SQLite datastore stub.'),
         make_option('--allow_skipped_files', action='store_true', default=False,
-            help='Allow access to Python files listed in skip_files.'),            
+            help='Allow access to files listed in skip_files.'),
     )
 
     help = 'Runs a copy of the App Engine development server.'
