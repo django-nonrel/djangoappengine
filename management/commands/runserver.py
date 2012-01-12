@@ -55,6 +55,8 @@ class Command(BaseRunserverCommand):
             help='The password to use with the SMTP server for sending email messages.'),
         make_option('--use_sqlite', action='store_true', default=False,
             help='Use the new, SQLite datastore stub.'),
+        make_option('--allow_skipped_files', action='store_true', default=False,
+            help='Allow access to files listed in skip_files.'),
     )
 
     help = 'Runs a copy of the App Engine development server.'
@@ -126,7 +128,7 @@ class Command(BaseRunserverCommand):
 
         # Process the rest of the options here
         bool_options = ['debug', 'debug_imports', 'clear_datastore', 'require_indexes',
-                        'high_replication', 'enable_sendmail', 'use_sqlite',]
+                        'high_replication', 'enable_sendmail', 'use_sqlite', 'allow_skipped_files']
         for opt in bool_options:
             if options[opt] != False:
                 args.append("--%s" % opt)
