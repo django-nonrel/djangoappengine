@@ -38,13 +38,22 @@ class StubManager(object):
         if not have_appserver:
             self.setup_local_stubs(connection)
 
-    def activate_test_stubs(self):
+    def activate_test_stubs(self, connection):
         if self.active_stubs == 'test':
             return
+
+        appserver_opts = connection.settings_dict.get('DEV_APPSERVER_OPTIONS', {})
+        high_replication = appserver_opts.get('high_replication', False)
+
+        datastore_opts = {}
+        if high_replication:
+            from google.appengine.datastore import datastore_stub_util
+            datastore_opts['consistency_policy'] = datastore_stub_util.PseudoRandomHRConsistencyPolicy(probability=1)
+
         self.testbed.activate()
         self.pre_test_stubs = self.active_stubs
         self.active_stubs = 'test'
-        self.testbed.init_datastore_v3_stub()
+        self.testbed.init_datastore_v3_stub(**datastore_opts)
         self.testbed.init_memcache_stub()
         self.testbed.init_taskqueue_stub(root_path=PROJECT_DIR)
         self.testbed.init_urlfetch_stub()
