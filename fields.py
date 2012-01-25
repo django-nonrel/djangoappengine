@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.encoding import smart_unicode
 from google.appengine.api.datastore import Key, datastore_errors
 from .models import GAEKey, GAEAncestorKey
 
@@ -76,3 +77,6 @@ class GAEKeyField(models.Field):
                 return key
 
         return super(GAEKeyField, self).pre_save(model_instance, add)
+
+    def value_to_string(self, obj):
+        return smart_unicode(self._get_val_from_obj(obj).real_key())
