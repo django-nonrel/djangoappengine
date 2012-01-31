@@ -57,6 +57,8 @@ class Command(BaseRunserverCommand):
             help='Use the new, SQLite datastore stub.'),
         make_option('--allow_skipped_files', action='store_true', default=False,
             help='Allow access to files listed in skip_files.'),
+        make_option('--disable_task_running', action='store_true', default=False,
+                help='When supplied, tasks will not be automatically run after submission and must be run manually in the local admin console.'),
     )
 
     help = 'Runs a copy of the App Engine development server.'
@@ -128,7 +130,7 @@ class Command(BaseRunserverCommand):
 
         # Process the rest of the options here
         bool_options = ['debug', 'debug_imports', 'clear_datastore', 'require_indexes',
-                        'high_replication', 'enable_sendmail', 'use_sqlite', 'allow_skipped_files']
+                        'high_replication', 'enable_sendmail', 'use_sqlite', 'allow_skipped_files','disable_task_running', ]
         for opt in bool_options:
             if options[opt] != False:
                 args.append("--%s" % opt)
