@@ -55,7 +55,7 @@ class StubManager(object):
         self.active_stubs = 'test'
         self.testbed.init_datastore_v3_stub(**datastore_opts)
         self.testbed.init_memcache_stub()
-        self.testbed.init_taskqueue_stub(root_path=PROJECT_DIR)
+        self.testbed.init_taskqueue_stub(auto_task_running=True, root_path=PROJECT_DIR)
         self.testbed.init_urlfetch_stub()
         self.testbed.init_user_stub()
         self.testbed.init_xmpp_stub()
