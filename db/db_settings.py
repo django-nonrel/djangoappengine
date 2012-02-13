@@ -1,13 +1,17 @@
 from django.conf import settings
 from django.utils.importlib import import_module
 
-# TODO: add autodiscover() and make API more like dbindexer's register_index
+# TODO: Add autodiscover() and make API more like dbindexer's
+#       register_index.
+
+# TODO: Add support for eventual consistency setting on specific
+#       models.
+
 
 _MODULE_NAMES = getattr(settings, 'GAE_SETTINGS_MODULES', ())
 
 FIELD_INDEXES = None
 
-# TODO: add support for eventual consistency setting on specific models
 
 def get_model_indexes(model):
     indexes = get_indexes()
@@ -17,6 +21,7 @@ def get_model_indexes(model):
         model_index['indexed'].extend(config.get('indexed', ()))
         model_index['unindexed'].extend(config.get('unindexed', ()))
     return model_index
+
 
 def get_indexes():
     global FIELD_INDEXES

@@ -1,17 +1,23 @@
+import logging
+import os
+import shutil
+
+from django.db.backends.util import format_number
+
+from google.appengine.api.datastore import Delete, Query
+from google.appengine.api.namespace_manager import set_namespace
+from google.appengine.ext.db.metadata import get_kinds, get_namespaces
+
+from djangotoolbox.db.base import \
+    NonrelDatabaseClient, NonrelDatabaseFeatures, \
+    NonrelDatabaseIntrospection, NonrelDatabaseOperations, \
+    NonrelDatabaseValidation, NonrelDatabaseWrapper
+
 from ..boot import DATA_ROOT
 from ..utils import appid, on_production_server
 from .creation import DatabaseCreation
 from .stubs import stub_manager
-from django.db.backends.util import format_number
-from djangotoolbox.db.base import NonrelDatabaseFeatures, \
-    NonrelDatabaseOperations, NonrelDatabaseWrapper, NonrelDatabaseClient, \
-    NonrelDatabaseValidation, NonrelDatabaseIntrospection
-from google.appengine.ext.db.metadata import get_kinds, get_namespaces
-from google.appengine.api.datastore import Query, Delete
-from google.appengine.api.namespace_manager import set_namespace
-import logging
-import os
-import shutil
+
 
 DATASTORE_PATHS = {
     'datastore_path': os.path.join(DATA_ROOT, 'datastore'),
@@ -20,11 +26,13 @@ DATASTORE_PATHS = {
     'prospective_search_path': os.path.join(DATA_ROOT, 'prospective-search'),
 }
 
+
 def get_datastore_paths(options):
     paths = {}
     for key, path in DATASTORE_PATHS.items():
         paths[key] = options.get(key, path)
     return paths
+
 
 def destroy_datastore(paths):
     """Destroys the appengine datastore at the specified paths."""
@@ -40,57 +48,84 @@ def destroy_datastore(paths):
             if error.errno != 2:
                 logging.error("Failed to clear datastore: %s" % error)
 
+
 class DatabaseFeatures(NonrelDatabaseFeatures):
     allows_primary_key_0 = True
     supports_dicts = True
 
+
 class DatabaseOperations(NonrelDatabaseOperations):
     compiler_module = __name__.rsplit('.', 1)[0] + '.compiler'
 
+    # Used when a DecimalField does not specify max_digits or when
+    # encoding a float as a string, fixed to preserve comparisons.
     DEFAULT_MAX_DIGITS = 16
 
+    def sql_flush(self, style, tables, sequences):
+        self.connection.flush()
+        return []
+
     def value_to_db_decimal(self, value, max_digits, decimal_places):
+        """
+        Converts decimal to a unicode string for storage / lookup.
+
+        We need to convert in a way that preserves order -- if one
+        decimal is less than another, their string representations
+        should compare the same.
+
+        TODO: Can't this be done using string.format()?
+              Not in Python 2.5, str.format is backported to 2.6 only.
+        """
         if value is None:
             return None
 
+        # Handle sign separately.
         if value.is_signed():
             sign = u'-'
             value = abs(value)
         else:
             sign = u''
 
+        # Convert to a string.
         if max_digits is None:
             max_digits = self.DEFAULT_MAX_DIGITS
 
+
         if decimal_places is None:
             value = unicode(value)
+            decimal_places = 0
         else:
             value = format_number(value, max_digits, decimal_places)
-        decimal_places = decimal_places or 0
-        n = value.find('.')
 
+        # Pad with zeroes to a constant width.
+        n = value.find('.')
         if n < 0:
             n = len(value)
         if n < max_digits - decimal_places:
-            value = u"0" * (max_digits - decimal_places - n) + value
+            value = u'0' * (max_digits - decimal_places - n) + value
         return sign + value
 
-    def sql_flush(self, style, tables, sequences):
-        self.connection.flush()
-        return []
 
 class DatabaseClient(NonrelDatabaseClient):
     pass
 
+
 class DatabaseValidation(NonrelDatabaseValidation):
     pass
 
+
 class DatabaseIntrospection(NonrelDatabaseIntrospection):
+
     def table_names(self):
-        """Returns a list of names of all tables that exist in the database."""
+        """
+        Returns a list of names of all tables that exist in the
+        database.
+        """
         return [kind.key().name() for kind in Query(kind='__kind__').Run()]
 
+
 class DatabaseWrapper(NonrelDatabaseWrapper):
+
     def __init__(self, *args, **kwds):
         super(DatabaseWrapper, self).__init__(*args, **kwds)
         self.features = DatabaseFeatures(self)
@@ -114,29 +149,35 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
             stub_manager.setup_stubs(self)
 
     def flush(self):
-        """Helper function to remove the current datastore and re-open the stubs"""
+        """
+        Helper function to remove the current datastore and re-open the
+        stubs.
+        """
         if stub_manager.active_stubs == 'remote':
             import random
             import string
-            code = ''.join([random.choice(string.ascii_letters) for x in range(4)])
-            print '\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-            print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+            code = ''.join([random.choice(string.ascii_letters)
+                            for x in range(4)])
+            print "\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+            print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
             print "Warning! You're about to delete the *production* datastore!"
-            print 'Only models defined in your INSTALLED_APPS can be removed!'
-            print 'If you want to clear the whole datastore you have to use the ' \
-                  'datastore viewer in the dashboard. Also, in order to delete all '\
-                  'unneeded indexes you have to run appcfg.py vacuum_indexes.'
-            print 'In order to proceed you have to enter the following code:'
+            print "Only models defined in your INSTALLED_APPS can be removed!"
+            print "If you want to clear the whole datastore you have to use " \
+                  "the datastore viewer in the dashboard. Also, in order to " \
+                  "delete all unneeded indexes you have to run appcfg.py " \
+                  "vacuum_indexes."
+            print "In order to proceed you have to enter the following code:"
             print code
-            response = raw_input('Repeat: ')
+            response = raw_input("Repeat: ")
             if code == response:
-                print 'Deleting...'
+                print "Deleting..."
                 delete_all_entities()
                 print "Datastore flushed! Please check your dashboard's " \
-                      'datastore viewer for any remaining entities and remove ' \
-                      'all unneeded indexes with appcfg.py vacuum_indexes.'
+                      "datastore viewer for any remaining entities and " \
+                      "remove all unneeded indexes with appcfg.py " \
+                      "vacuum_indexes."
             else:
-                print 'Aborting'
+                print "Aborting."
                 exit()
         elif stub_manager.active_stubs == 'test':
             stub_manager.deactivate_test_stubs()
@@ -144,6 +185,7 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
         else:
             destroy_datastore(get_datastore_paths(self.settings_dict))
             stub_manager.setup_local_stubs(self)
+
 
 def delete_all_entities():
     for namespace in get_namespaces():

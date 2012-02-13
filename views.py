@@ -2,10 +2,11 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.utils.importlib import import_module
 
+
 def warmup(request):
     """
-    Provides default procedure for handling warmup requests on App Engine.
-    Just add this view to your main urls.py.
+    Provides default procedure for handling warmup requests on App
+    Engine. Just add this view to your main urls.py.
     """
     for app in settings.INSTALLED_APPS:
         for name in ('urls', 'views', 'models'):
@@ -14,4 +15,4 @@ def warmup(request):
             except ImportError:
                 pass
     content_type = 'text/plain; charset=%s' % settings.DEFAULT_CHARSET
-    return HttpResponse('Warmup done', content_type=content_type)
+    return HttpResponse("Warmup done.", content_type=content_type)

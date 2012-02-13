@@ -1,25 +1,32 @@
-from ..utils import appid, have_appserver
-from ..boot import PROJECT_DIR
-from google.appengine.ext.testbed import Testbed
-from urllib2 import HTTPError, URLError
 import logging
 import time
+from urllib2 import HTTPError, URLError
+
+from google.appengine.ext.testbed import Testbed
+
+from ..boot import PROJECT_DIR
+from ..utils import appid, have_appserver
+
 
 REMOTE_API_SCRIPTS = (
     '$PYTHON_LIB/google/appengine/ext/remote_api/handler.py',
     'google.appengine.ext.remote_api.handler.application',
 )
 
+
 def auth_func():
     import getpass
-    return raw_input('Login via Google Account (see note above if login fails): '), getpass.getpass('Password: ')
+    return raw_input("Login via Google Account (see note above if login fails): "), getpass.getpass("Password: ")
+
 
 def rpc_server_factory(*args, ** kwargs):
     from google.appengine.tools import appengine_rpc
     kwargs['save_cookies'] = True
     return appengine_rpc.HttpRpcServer(*args, ** kwargs)
 
+
 class StubManager(object):
+
     def __init__(self):
         self.testbed = Testbed()
         self.active_stubs = None
@@ -76,13 +83,14 @@ class StubManager(object):
                     break
         server = '%s.%s' % (connection.remote_app_id, connection.domain)
         remote_url = 'https://%s%s' % (server, connection.remote_api_path)
-        logging.info('Setting up remote_api for "%s" at %s' %
+        logging.info("Setting up remote_api for '%s' at %s." %
                      (connection.remote_app_id, remote_url))
         if not have_appserver:
-            logging.info('Connecting to remote_api handler.\n\n'
-                  'IMPORTANT: Check your login method settings in the '
-                  'App Engine Dashboard if you have problems logging in. '
-                  'Login is only supported for Google Accounts.\n')
+            logging.info(
+                "Connecting to remote_api handler.\n\n"
+                "IMPORTANT: Check your login method settings in the "
+                "App Engine Dashboard if you have problems logging in. "
+                "Login is only supported for Google Accounts.")
         from google.appengine.ext.remote_api import remote_api_stub
         remote_api_stub.ConfigureRemoteApi(None,
             connection.remote_api_path, auth_func, servername=server,
@@ -94,7 +102,7 @@ class StubManager(object):
                 remote_api_stub.MaybeInvokeAuthentication()
             except HTTPError, e:
                 if not have_appserver:
-                    logging.info('Retrying in %d seconds...' % retry_delay)
+                    logging.info("Retrying in %d seconds..." % retry_delay)
                 time.sleep(retry_delay)
                 retry_delay *= 2
             else:
@@ -110,10 +118,10 @@ class StubManager(object):
                                "Note that login is only supported for "
                                "Google Accounts. Make sure you've configured "
                                "the correct authentication method in the "
-                               "App Engine Dashboard."
-                               % (e, remote_url))
-        logging.info('Now using the remote datastore for "%s" at %s' %
+                               "App Engine Dashboard." % (e, remote_url))
+        logging.info("Now using the remote datastore for '%s' at %s." %
                      (connection.remote_app_id, remote_url))
         self.active_stubs = 'remote'
+
 
 stub_manager = StubManager()

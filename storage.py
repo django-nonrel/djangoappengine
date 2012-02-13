@@ -18,8 +18,10 @@ from django.utils.encoding import smart_str, force_unicode
 from google.appengine.ext.blobstore import BlobInfo, BlobKey, delete, \
     create_upload_url, BLOB_KEY_HEADER, BLOB_RANGE_HEADER, BlobReader
 
+
 def prepare_upload(request, url, **kwargs):
     return create_upload_url(url), {}
+
 
 def serve_file(request, file, save_as, content_type, **kwargs):
     if hasattr(file, 'file') and hasattr(file.file, 'blobstore_info'):
@@ -36,20 +38,23 @@ def serve_file(request, file, save_as, content_type, **kwargs):
     if http_range is not None:
         response[BLOB_RANGE_HEADER] = http_range
     if save_as:
-        response['Content-Disposition'] = smart_str(u'attachment; filename=%s' % save_as)
+        response['Content-Disposition'] = smart_str(
+            u'attachment; filename=%s' % save_as)
     if file.size is not None:
         response['Content-Length'] = file.size
     return response
 
+
 class BlobstoreStorage(Storage):
-    """Google App Engine Blobstore storage backend"""
+    """Google App Engine Blobstore storage backend."""
 
     def _open(self, name, mode='rb'):
         return BlobstoreFile(name, mode, self)
 
     def _save(self, name, content):
         name = name.replace('\\', '/')
-        if hasattr(content, 'file') and hasattr(content.file, 'blobstore_info'):
+        if hasattr(content, 'file') and \
+           hasattr(content.file, 'blobstore_info'):
             data = content.file.blobstore_info
         elif hasattr(content, 'blobstore_info'):
             data = content.blobstore_info
@@ -59,7 +64,7 @@ class BlobstoreStorage(Storage):
                              "whose file attribute is a BlobstoreFile.")
 
         if isinstance(data, (BlobInfo, BlobKey)):
-            # We change the file name to the BlobKey's str() value
+            # We change the file name to the BlobKey's str() value.
             if isinstance(data, BlobInfo):
                 data = data.key()
             return '%s/%s' % (data, name.lstrip('/'))
@@ -93,7 +98,9 @@ class BlobstoreStorage(Storage):
     def _get_blobinfo(self, name):
         return BlobInfo.get(self._get_key(name))
 
+
 class BlobstoreFile(File):
+
     def __init__(self, name, mode, storage):
         self.name = name
         self._storage = storage
@@ -113,9 +120,10 @@ class BlobstoreFile(File):
             self._file = BlobReader(self.blobstore_info.key())
         return self._file
 
+
 class BlobstoreFileUploadHandler(FileUploadHandler):
     """
-    File upload handler for the Google App Engine Blobstore
+    File upload handler for the Google App Engine Blobstore.
     """
 
     def new_file(self, *args, **kwargs):
@@ -144,10 +152,12 @@ class BlobstoreFileUploadHandler(FileUploadHandler):
             blobinfo=BlobInfo(self.blobkey),
             charset=self.charset)
 
+
 class BlobstoreUploadedFile(UploadedFile):
     """
     A file uploaded into memory (i.e. stream-to-memory).
     """
+
     def __init__(self, blobinfo, charset):
         super(BlobstoreUploadedFile, self).__init__(
             BlobReader(blobinfo.key()), blobinfo.filename,
@@ -157,7 +167,7 @@ class BlobstoreUploadedFile(UploadedFile):
     def open(self, mode=None):
         pass
 
-    def chunks(self, chunk_size=1024*128):
+    def chunks(self, chunk_size=1024 * 128):
         self.file.seek(0)
         while True:
             content = self.read(chunk_size)
@@ -165,5 +175,5 @@ class BlobstoreUploadedFile(UploadedFile):
                 break
             yield content
 
-    def multiple_chunks(self, chunk_size=1024*128):
+    def multiple_chunks(self, chunk_size=1024 * 128):
         return True
