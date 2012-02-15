@@ -485,14 +485,12 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
 
     @safe_call
     def insert(self, data, return_id=False):
-        properties = {}
         opts = self.query.get_meta()
         unindexed_fields = get_model_indexes(self.query.model)['unindexed']
-        unindexed_cols = [opts.get_field(name).column
-                          for name in unindexed_fields]
-        kwds = {'unindexed_properties': unindexed_cols}
-        for column, value in data.items():
-            if column == opts.pk.column:
+        kwds = {'unindexed_properties': []}
+        properties = {}
+        for field, value in data.iteritems():
+            if field.primary_key:
                 if isinstance(value, basestring):
                     kwds['name'] = value
                 else:
@@ -505,7 +503,10 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
 
             # Use column names as property names.
             else:
-                properties[column] = value
+                properties[field.column] = value
+
+            if field in unindexed_fields:
+                kwds['unindexed_properties'].append(field.column)
 
         entity = Entity(opts.db_table, **kwds)
         entity.update(properties)
