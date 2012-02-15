@@ -171,11 +171,12 @@ class GAEQuery(NonrelQuery):
             self.gae_ordering.append((order, direction))
 
     @safe_call
-    def add_filter(self, column, lookup_type, negated, db_type, value):
+    def add_filter(self, field, lookup_type, negated, value):
         """
         This function is used by the default add_filters()
         implementation.
         """
+        db_type = field.db_type(connection=self.connection)
 
         # GAE does not let you store empty lists, so we can tell
         # upfront that queriying for one will return nothing.
@@ -184,8 +185,7 @@ class GAEQuery(NonrelQuery):
             return
 
         # Emulated/converted lookups
-        if column == self.query.get_meta().pk.column:
-            column = '__key__'
+        if field.primary_key:
             db_table = self.query.get_meta().db_table
             if lookup_type in ('exact', 'in'):
                 # Optimization: batch-get by key
@@ -240,8 +240,7 @@ class GAEQuery(NonrelQuery):
                 raise DatabaseError("You can't exclude more than one __exact "
                                     "filter.")
             self.has_negated_exact_filter = True
-            self._combine_filters(column, db_type,
-                                  (('<', value), ('>', value)))
+            self._combine_filters(field, (('<', value), ('>', value)))
             return
         elif negated:
             try:
@@ -249,21 +248,21 @@ class GAEQuery(NonrelQuery):
             except KeyError:
                 raise DatabaseError("Lookup type %r can't be negated." %
                                     lookup_type)
-            if self.inequality_field and column != self.inequality_field:
+            if self.inequality_field and field != self.inequality_field:
                 raise DatabaseError("Can't have inequality filters on "
-                                    "multiple columns (here: %r and %r)." %
-                                    (self.inequality_field, column))
-            self.inequality_field = column
+                                    "multiple fields (here: %r and %r)." %
+                                    (field, self.inequality_field))
+            self.inequality_field = field
         elif lookup_type == 'in':
             # Create sub-query combinations, one for each value.
             if len(self.gae_query) * len(value) > 30:
                 raise DatabaseError("You can't query against more than "
                                     "30 __in filter value combinations.")
             op_values = [('=', v) for v in value]
-            self._combine_filters(column, db_type, op_values)
+            self._combine_filters(field, op_values)
             return
         elif lookup_type == 'startswith':
-            self._add_filter(column, '>=', db_type, value)
+            self._add_filter(field, '>=', value)
             if isinstance(value, str):
                 value = value.decode('utf8')
             if isinstance(value, Key):
@@ -274,30 +273,38 @@ class GAEQuery(NonrelQuery):
                 value = Key.from_path(*value)
             else:
                 value += u'\ufffd'
-            self._add_filter(column, '<=', db_type, value)
+            self._add_filter(field, '<=', value)
             return
         elif lookup_type in ('range', 'year'):
-            self._add_filter(column, '>=', db_type, value[0])
+            self._add_filter(field, '>=', value[0])
             op = '<=' if lookup_type == 'range' else '<'
-            self._add_filter(column, op, db_type, value[1])
+            self._add_filter(field, op, value[1])
             return
         else:
             op = OPERATORS_MAP[lookup_type]
 
-        self._add_filter(column, op, db_type, value)
+        self._add_filter(field, op, value)
 
     # ----------------------------------------------
     # Internal API
     # ----------------------------------------------
 
-    def _add_filter(self, column, op, db_type, value):
+    def _add_filter(self, field, op, value):
         for query in self.gae_query:
+
+            # GAE uses a special property name for primary key filters.
+            if field.primary_key:
+                column = '__key__'
+            else:
+                column = field.column
             key = '%s %s' % (column, op)
+
+            db_type = field.db_type(connection=self.connection)
             value = self.convert_value_for_db(db_type, value)
             if isinstance(value, Text):
                 raise DatabaseError("TextField is not indexed, by default, "
                                     "so you can't filter on it. Please add "
-                                    "an index definition for the column %s "
+                                    "an index definition for the field %s "
                                     "on the model %s.%s as described here:\n"
                                     "http://www.allbuttonspressed.com/blog/django/2010/07/Managing-per-field-indexes-on-App-Engine" %
                                     (column, self.query.model.__module__,
@@ -311,7 +318,7 @@ class GAEQuery(NonrelQuery):
             else:
                 query[key] = value
 
-    def _combine_filters(self, column, db_type, op_values):
+    def _combine_filters(self, field, op_values):
         gae_query = self.gae_query
         combined = []
         for query in gae_query:
@@ -319,7 +326,7 @@ class GAEQuery(NonrelQuery):
                 self.gae_query = [Query(self.db_table,
                                         keys_only=self.pks_only)]
                 self.gae_query[0].update(query)
-                self._add_filter(column, op, db_type, value)
+                self._add_filter(field, op, value)
                 combined.append(self.gae_query[0])
         self.gae_query = combined
 
