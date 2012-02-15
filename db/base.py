@@ -1,10 +1,17 @@
+import datetime
+import decimal
 import logging
 import os
 import shutil
 
 from django.db.backends.util import format_number
+from django.db.utils import DatabaseError
 
 from google.appengine.api.datastore import Delete, Query
+from google.appengine.api.datastore_errors import BadArgumentError, \
+    BadValueError
+from google.appengine.api.datastore_types import Blob, Key, Text, \
+    ValidateInteger
 from google.appengine.api.namespace_manager import set_namespace
 from google.appengine.ext.db.metadata import get_kinds, get_namespaces
 
@@ -25,6 +32,18 @@ DATASTORE_PATHS = {
     #'rdbms_sqlite_path': os.path.join(DATA_ROOT, 'rdbms'),
     'prospective_search_path': os.path.join(DATA_ROOT, 'prospective-search'),
 }
+
+
+def key_from_path(db_table, value):
+    """
+    Workaround for GAE choosing not to validate integer ids when
+    creating keys.
+
+    TODO: Should be removed if it gets fixed.
+    """
+    if isinstance(value, (int, long)):
+        ValidateInteger(value, 'id')
+    return Key.from_path(db_table, value)
 
 
 def get_datastore_paths(options):
@@ -61,6 +80,13 @@ class DatabaseOperations(NonrelDatabaseOperations):
     # encoding a float as a string, fixed to preserve comparisons.
     DEFAULT_MAX_DIGITS = 16
 
+    # Date used to store times as datetimes.
+    # TODO: Use just date()?
+    DEFAULT_DATE = datetime.date(1970, 1, 1)
+
+    # Time used to store dates as datetimes.
+    DEFAULT_TIME = datetime.time()
+
     def sql_flush(self, style, tables, sequences):
         self.connection.flush()
         return []
@@ -90,6 +116,10 @@ class DatabaseOperations(NonrelDatabaseOperations):
         We need to convert in a way that preserves order -- if one
         decimal is less than another, their string representations
         should compare the same.
+
+        This is more a field conversion than a type conversion because
+        it needs a fixed field attributes to function and doesn't work
+        for special decimal values like Infinity or NaN.
 
         TODO: Can't this be done using string.format()?
               Not in Python 2.5, str.format is backported to 2.6 only.
@@ -138,6 +168,141 @@ class DatabaseOperations(NonrelDatabaseOperations):
             return decimal.Decimal(value)
 
         return value
+
+    def value_for_db(self, value, field, field_kind, db_type, lookup):
+        """
+        GAE database may store a restricted set of Python types, for
+        some cases it has its own types like Key, Text or Blob.
+
+        TODO: Consider moving empty list handling here (from insert).
+        """
+
+        # Store Nones as Nones to handle nullable fields, even keys.
+        if value is None:
+            return None
+
+        # Parent can handle iterable fields and Django wrappers.
+        value = super(DatabaseOperations, self).value_for_db(
+            value, field, field_kind, db_type, lookup)
+
+        # Create GAE db.Keys from Django keys.
+        if db_type == 'key':
+#            value = self.encode_for_db_key(value, field_kind)
+            try:
+
+                # We use model's table name as key kind, but this has
+                # to be the table of the model of the instance that the
+                # key identifies, that's why for ForeignKeys and other
+                # relations we'll use the table of the model the field
+                # refers to.
+                if field.rel is not None:
+                    db_table = field.rel.to._meta.db_table
+                else:
+                    db_table = field.model._meta.db_table
+
+                value = key_from_path(db_table, value)
+            except (BadArgumentError, BadValueError,):
+                raise DatabaseError("Only strings and positive integers "
+                                    "may be used as keys on GAE.")
+
+        # Store all strings as unicode, use db.Text for longer content.
+        elif db_type == 'string' or db_type == 'text':
+            if isinstance(value, str):
+                value = value.decode('utf-8')
+            if db_type == 'text':
+                value = Text(value)
+
+        # Store all date / time values as datetimes, by using some
+        # default time or date.
+        elif db_type == 'date':
+            value = datetime.datetime.combine(value, self.DEFAULT_TIME)
+        elif db_type == 'time':
+            value = datetime.datetime.combine(self.DEFAULT_DATE, value)
+
+        # Store BlobField, DictField and EmbeddedModelField values as Blobs.
+        elif db_type == 'bytes':
+            value = Blob(value)
+
+        return value
+
+    def value_from_db(self, value, field, field_kind, db_type):
+        """
+        Undoes conversions done in value_for_db.
+        """
+
+        # We could have stored None for a null field.
+        if value is None:
+            return None
+
+        # All keys were converted to the Key class.
+        if db_type == 'key':
+            assert isinstance(value, Key), \
+                "GAE db.Key expected! Try changing to old storage, " \
+                "dumping data, changing to new storage and reloading."
+            assert value.parent() is None, "Parents are not yet supported!"
+            value = value.id_or_name()
+#            value = self.decode_from_db_key(value, field_kind)
+
+        # Always retrieve strings as unicode (old datasets may
+        # contain non-unicode strings).
+        elif db_type == 'string' or db_type == 'text':
+            if isinstance(value, str):
+                value = value.decode('utf-8')
+            else:
+                value = unicode(value)
+
+        # Dates and times are stored as datetimes, drop the added part.
+        elif db_type == 'date':
+            value = value.date()
+        elif db_type == 'time':
+            value = value.time()
+
+        # Convert GAE Blobs to plain strings for Django.
+        elif db_type == 'bytes':
+            value = str(value)
+
+        return super(DatabaseOperations, self).value_from_db(
+            value, field, field_kind, db_type)
+
+#    def value_for_db_key(self, value, field_kind):
+#        """
+#        Converts values to be used as entity keys to strings,
+#        trying (but not fully succeeding) to preserve comparisons.
+#        """
+
+#        # Bools as positive integers.
+#        if field_kind == 'BooleanField':
+#            value = int(value) + 1
+
+#        # Encode floats as strings.
+#        elif field_kind == 'FloatField':
+#            value = self.value_to_db_decimal(
+#                decimal.Decimal(value), None, None)
+
+#        # Integers as strings (string keys sort after int keys, so
+#        # all need to be encoded to preserve comparisons).
+#        elif field_kind in ('IntegerField', 'BigIntegerField',
+#           'PositiveIntegerField', 'PositiveSmallIntegerField',
+#           'SmallIntegerField'):
+#            value = self.value_to_db_decimal(
+#                decimal.Decimal(value), None, 0)
+
+#        return value
+
+#    def value_from_db_key(self, value, field_kind):
+#        """
+#        Decodes value previously encoded in a key.
+#        """
+#        if field_kind == 'BooleanField':
+#            value = bool(value - 1)
+#        elif field_kind == 'FloatField':
+#            value = float(value)
+#        elif field_kind in ('IntegerField', 'BigIntegerField',
+#           'PositiveIntegerField', 'PositiveSmallIntegerField',
+#           'SmallIntegerField'):
+#            value = int(value)
+
+#        return value
 
 
 class DatabaseClient(NonrelDatabaseClient):

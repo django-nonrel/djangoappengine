@@ -45,6 +45,15 @@ class IntegerChild(models.Model):
     parent = models.ForeignKey(IntegerParent)
 
 
+class ParentKind(models.Model):
+    pass
+
+
+class ChildKind(models.Model):
+    parent = models.ForeignKey(ParentKind)
+    parents = ListField(models.ForeignKey(ParentKind))
+
+
 class KeysTest(TestCase):
     """
     GAE requires that keys are strings or positive integers,
@@ -262,11 +271,6 @@ class KeysTest(TestCase):
 
         TODO: Add DictField / EmbeddedModelField and nesting checks.
         """
-        class ParentKind(models.Model):
-            pass
-        class ChildKind(models.Model):
-            parent = models.ForeignKey(ParentKind)
-            parents = ListField(models.ForeignKey(ParentKind))
         parent = ParentKind.objects.create(pk=1)
         child = ChildKind.objects.create(
             pk=2, parent=parent, parents=[parent.pk])

@@ -1,6 +1,3 @@
-import cPickle as pickle
-import datetime
-import decimal
 from functools import wraps
 import sys
 
@@ -11,11 +8,9 @@ from django.db.utils import DatabaseError, IntegrityError
 from django.utils.tree import Node
 
 from google.appengine.api.datastore import Entity, Query, MultiQuery, \
-    Put, Get, Delete, Key
+    Put, Get, Delete
 from google.appengine.api.datastore_errors import Error as GAEError
-from google.appengine.api.datastore_types import Text, Category, Email, Link, \
-    PhoneNumber, PostalAddress, Text, Blob, ByteString, GeoPt, IM, Key, \
-    Rating, BlobKey
+from google.appengine.api.datastore_types import Key, Text
 
 from djangotoolbox.db.basecompiler import NonrelQuery, NonrelCompiler, \
     NonrelInsertCompiler, NonrelUpdateCompiler, NonrelDeleteCompiler
@@ -176,7 +171,9 @@ class GAEQuery(NonrelQuery):
         This function is used by the default add_filters()
         implementation.
         """
-        db_type = field.db_type(connection=self.connection)
+        if lookup_type not in OPERATORS_MAP:
+            raise DatabaseError("Lookup type %r isn't supported." %
+                                lookup_type)
 
         # GAE does not let you store empty lists, so we can tell
         # upfront that queriying for one will return nothing.
@@ -184,46 +181,22 @@ class GAEQuery(NonrelQuery):
             self.included_pks = []
             return
 
-        # Emulated/converted lookups
-        if field.primary_key:
-            db_table = self.query.get_meta().db_table
-            if lookup_type in ('exact', 'in'):
-                # Optimization: batch-get by key
-                if self.included_pks is not None:
-                    raise DatabaseError("You can't apply multiple AND "
-                                        "filters on the primary key. "
-                                        "Did you mean __in=[...]?")
-                if not isinstance(value, (tuple, list)):
-                    value = [value]
-                pks = [create_key(db_table, pk) for pk in value if pk]
-                if negated:
-                    self.excluded_pks = pks
-                else:
-                    self.included_pks = pks
-                return
+        # Optimization: batch-get by key; this is only suitable for
+        # primary keys, not for anything that uses the key type.
+        if field.primary_key and lookup_type in ('exact', 'in'):
+            if self.included_pks is not None:
+                raise DatabaseError("You can't apply multiple AND "
+                                    "filters on the primary key. "
+                                    "Did you mean __in=[...]?")
+            if not isinstance(value, (tuple, list)):
+                value = [value]
+            pks = [self.compiler.value_for_db(pk, field, True)
+                   for pk in value if pk is not None]
+            if negated:
+                self.excluded_pks = pks
             else:
-                # XXX: set db_type to 'gae_key' in order to allow
-                # convert_value_for_db to recognize the value to be a Key and
-                # not a str. Otherwise the key would be converted back to a
-                # unicode (see convert_value_for_db)
-                db_type = 'gae_key'
-                key_type_error = 'Lookup values on primary keys have to be' \
-                                 'a string or an integer.'
-                if lookup_type == 'range':
-                    if isinstance(value, (list, tuple)) and not (
-                            isinstance(value[0], (basestring, int, long)) and
-                            isinstance(value[1], (basestring, int, long))):
-                        raise DatabaseError(key_type_error)
-                elif not isinstance(value, (basestring, int, long)):
-                    raise DatabaseError(key_type_error)
-                # for lookup type range we have to deal with a list
-                if lookup_type == 'range':
-                    value[0] = create_key(db_table, value[0])
-                    value[1] = create_key(db_table, value[1])
-                else:
-                    value = create_key(db_table, value)
-        if lookup_type not in OPERATORS_MAP:
-            raise DatabaseError("Lookup type %r isn't supported" % lookup_type)
+                self.included_pks = pks
+            return
 
         # We check for negation after lookup_type isnull because it
         # simplifies the code. All following lookup_type checks assume
@@ -263,17 +236,7 @@ class GAEQuery(NonrelQuery):
             return
         elif lookup_type == 'startswith':
             self._add_filter(field, '>=', value)
-            if isinstance(value, str):
-                value = value.decode('utf8')
-            if isinstance(value, Key):
-                value = list(value.to_path())
-                if isinstance(value[-1], str):
-                    value[-1] = value[-1].decode('utf8')
-                value[-1] += u'\ufffd'
-                value = Key.from_path(*value)
-            else:
-                value += u'\ufffd'
-            self._add_filter(field, '<=', value)
+            self._add_filter(field, '<=', value + u'\ufffd')
             return
         elif lookup_type in ('range', 'year'):
             self._add_filter(field, '>=', value[0])
@@ -299,8 +262,7 @@ class GAEQuery(NonrelQuery):
                 column = field.column
             key = '%s %s' % (column, op)
 
-            db_type = field.db_type(connection=self.connection)
-            value = self.convert_value_for_db(db_type, value)
+            value = self.compiler.value_for_db(value, field, True)
             if isinstance(value, Text):
                 raise DatabaseError("TextField is not indexed, by default, "
                                     "so you can't filter on it. Please add "
@@ -372,8 +334,7 @@ class GAEQuery(NonrelQuery):
     def matches_filters(self, entity):
         item = dict(entity)
         pk = self.query.get_meta().pk
-        value = self.convert_value_from_db(pk.db_type(connection=self.connection),
-            entity.key())
+        value = self.compiler.value_from_db(entity.key(), pk)
         item[pk.column] = value
         result = self._matches_filters(item, self.query.where)
         return result
@@ -386,96 +347,6 @@ class SQLCompiler(NonrelCompiler):
     """
     query_class = GAEQuery
 
-    def convert_value_from_db(self, db_type, value):
-        if isinstance(value, (list, tuple, set)) and \
-                db_type.startswith(('ListField:', 'SetField:')):
-            db_sub_type = db_type.split(':', 1)[1]
-            value = [self.convert_value_from_db(db_sub_type, subvalue)
-                     for subvalue in value]
-
-        if db_type.startswith('SetField:') and value is not None:
-            value = set(value)
-
-        if db_type.startswith('DictField:') and value is not None:
-            value = pickle.loads(value)
-            if ':' in db_type:
-                db_sub_type = db_type.split(':', 1)[1]
-                value = dict((key, self.convert_value_from_db(db_sub_type, value[key]))
-                             for key in value)
-
-        # the following GAE database types are all unicode subclasses, cast them
-        # to unicode so they appear like pure unicode instances for django
-        if isinstance(value, (Category, Email, Link, PhoneNumber, PostalAddress,
-                Text, unicode)):
-            value = unicode(value)
-        elif isinstance(value, Blob):
-            value = str(value)
-        elif isinstance(value, str):
-            # always retrieve strings as unicode (it is possible that old datasets
-            # contain non unicode strings, nevertheless work with unicode ones)
-            value = value.decode('utf-8')
-        elif isinstance(value, Key):
-            # for now we do not support KeyFields thus a Key has to be the own
-            # primary key
-            # TODO: GAE: support parents via GAEKeyField
-            assert value.parent() is None, "Parents are not yet supported!"
-            if db_type == 'integer':
-                if value.id() is None:
-                    raise DatabaseError('Wrong type for Key. Expected integer, found'
-                        'None')
-                else:
-                    value = value.id()
-            elif db_type == 'string':
-                if value.name() is None:
-                    raise DatabaseError('Wrong type for Key. Expected string, found'
-                        'None')
-                else:
-                    value = value.name()
-            else:
-                raise DatabaseError("%s fields cannot be keys on GAE" % db_type)
-        elif db_type == 'date' and isinstance(value, datetime.datetime):
-            value = value.date()
-        elif db_type == 'time' and isinstance(value, datetime.datetime):
-            value = value.time()
-        return value
-
-    def convert_value_for_db(self, db_type, value):
-        if isinstance(value, unicode):
-            value = unicode(value)
-        elif isinstance(value, str):
-            value = str(value)
-        elif isinstance(value, (list, tuple, set)) and \
-                db_type.startswith(('ListField:', 'SetField:')):
-            db_sub_type = db_type.split(':', 1)[1]
-            value = [self.convert_value_for_db(db_sub_type, subvalue)
-                     for subvalue in value]
-        elif isinstance(value, dict) and db_type.startswith('DictField:'):
-            if ':' in db_type:
-                db_sub_type = db_type.split(':', 1)[1]
-                value = dict([(key, self.convert_value_for_db(db_sub_type, value[key]))
-                              for key in value])
-            value = Blob(pickle.dumps(value))
-
-        if db_type == 'gae_key':
-            return value
-        elif db_type == 'text':
-            # long text fields cannot be indexed on GAE so use GAE's database
-            # type Text
-            if value is not None:
-                value = Text(value.decode('utf-8') if isinstance(value, str) else value)
-        elif db_type == 'string':
-            value = value.decode('utf-8') if isinstance(value, str) else value
-        elif db_type == 'blob':
-            if value is not None:
-                value = Blob(value)
-        elif type(value) is str:
-            # always store unicode strings
-            value = value.decode('utf-8')
-        elif db_type == 'date' or db_type == 'time' or db_type == 'datetime':
-            # here we have to check the db_type because GAE always stores datetimes
-            value = to_datetime(value)
-        return value
-
 
 class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
 
@@ -486,11 +357,14 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
         kwds = {'unindexed_properties': []}
         properties = {}
         for field, value in data.iteritems():
+
+            # The value will already be a db.Key, but the Entity
+            # constructor takes a name or id of the key, and will
+            # automatically create a new key if neither is given.
             if field.primary_key:
-                if isinstance(value, basestring):
-                    kwds['name'] = value
-                else:
-                    kwds['id'] = value
+                if value is not None:
+                    kwds['id'] = value.id()
+                    kwds['name'] = value.name()
 
             # GAE does not store empty lists (and even does not allow
             # passing empty lists to Entity.update) so skip them.
@@ -527,7 +401,7 @@ class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
     @commit_locked
     def update_entity(self, pk, pk_field):
         gae_query = self.build_query()
-        entity = Get(create_key(self.query.get_meta().db_table, pk))
+        entity = Get(self.value_for_db(pk, pk_field))
 
         if not gae_query.matches_filters(entity):
             return
@@ -555,40 +429,10 @@ class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
                 update_dict[field] = value
 
         for field, value in update_dict.iteritems():
-            db_type = field.db_type(connection=self.connection)
-            entity[qn(field.column)] = self.convert_value_for_db(db_type, value)
+            entity[qn(field.column)] = self.value_for_db(value, field)
 
         Put(entity)
 
 
 class SQLDeleteCompiler(NonrelDeleteCompiler, SQLCompiler):
     pass
-
-
-def to_datetime(value):
-    """Convert a time or date to a datetime for datastore storage.
-
-    Args:
-    value: A datetime.time, datetime.date or string object.
-
-    Returns:
-    A datetime object with date set to 1970-01-01 if value is a datetime.time
-    A datetime object with date set to value.year - value.month - value.day and
-    time set to 0:00 if value is a datetime.date
-    """
-
-    if value is None:
-        return value
-    elif isinstance(value, datetime.datetime):
-        return value
-    elif isinstance(value, datetime.date):
-        return datetime.datetime(value.year, value.month, value.day)
-    elif isinstance(value, datetime.time):
-        return datetime.datetime(1970, 1, 1, value.hour, value.minute,
-            value.second, value.microsecond)
-
-
-def create_key(db_table, value):
-    if isinstance(value, (int, long)) and value < 1:
-        return None
-    return Key.from_path(db_table, value)

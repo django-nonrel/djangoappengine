@@ -9,9 +9,17 @@ class DatabaseCreation(NonrelDatabaseCreation):
     # For TextFields and XMLFields we'll default to the unindexable,
     # but not length-limited, db.Text (db_type of "string" fields is
     # overriden indexed / unindexed fields).
+    # GAE datastore cannot process sets directly, so we'll store them
+    # as lists, it also can't handle dicts so we'll store DictField and
+    # EmbeddedModelFields pickled as Blobs (pickled using the binary
+    # protocol 2, even though they used to be serialized with the ascii
+    # protocol 0 -- the deconversion is the same for both).
     data_types = dict(NonrelDatabaseCreation.data_types, **{
         'TextField':          'text',
         'XMLField':           'text',
+        'SetField':           'list',
+        'DictField':          'bytes',
+        'EmbeddedModelField': 'bytes',
     })
 
     def db_type(self, field):
