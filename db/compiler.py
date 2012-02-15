@@ -406,8 +406,6 @@ class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
         if not gae_query.matches_filters(entity):
             return
 
-        qn = self.quote_name_unless_alias
-        update_dict = {}
         for field, _, value in self.query.values:
             if hasattr(value, 'prepare_database_save'):
                 value = value.prepare_database_save(field)
@@ -422,14 +420,9 @@ class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
                                             allow_joins=False)
 
             if hasattr(value, 'as_sql'):
-                # Evaluate expression and return the new value.
-                val = value.as_sql(qn, self.connection)
-                update_dict[field] = val
-            else:
-                update_dict[field] = value
+                value = value.as_sql(lambda n: n, self.connection)
 
-        for field, value in update_dict.iteritems():
-            entity[qn(field.column)] = self.value_for_db(value, field)
+            entity[field.column] = self.value_for_db(value, field)
 
         Put(entity)
 
