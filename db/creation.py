@@ -4,39 +4,57 @@ from .db_settings import get_model_indexes
 from .stubs import stub_manager
 
 
-class _StringType(object):
-    """
-    Helper to dynamically determine field's db_type based on its
-    indexing.
-    """
-
-    def __init__(self, field_type):
-        self.field_type = field_type
-
-    def __mod__(self, field):
-        indexes = get_model_indexes(field['model'])
-        if field['name'] in indexes['indexed']:
-            return 'text'
-        elif field['name'] in indexes['unindexed']:
-            return 'longtext'
-        return self.field_type
-
-
-def get_data_types():
-    data_types = NonrelDatabaseCreation.data_types.copy()
-    for field_type, db_type in data_types.iteritems():
-        if db_type in ('text', 'longtext'):
-            data_types[field_type] = _StringType(db_type)
-    return data_types
-
-
 class DatabaseCreation(NonrelDatabaseCreation):
 
-    # This dictionary maps Field objects to their associated GAE column
-    # types, as strings. Column-type strings can contain format strings; they'll
-    # be interpolated against the values of Field.__dict__ before being output.
-    # If a column type is set to None, it won't be included in the output.
-    data_types = get_data_types()
+    # For TextFields and XMLFields we'll default to the unindexable,
+    # but not length-limited, db.Text (db_type of "string" fields is
+    # overriden indexed / unindexed fields).
+    data_types = dict(NonrelDatabaseCreation.data_types, **{
+        'TextField':          'text',
+        'XMLField':           'text',
+    })
+
+    def db_type(self, field):
+        """
+        Provides a choice to continue using db.Key just for primary key
+        storage or to use it for all references (ForeignKeys and other
+        relations).
+
+        We also force the "string" db_type (plain string storage) if a
+        field is to be indexed, and the "text" db_type (db.Text) if
+        it's registered as unindexed.
+        """
+        if self.connection.settings_dict.get('STORE_RELATIONS_AS_DB_KEYS'):
+            if field.primary_key or field.rel is not None:
+                return 'key'
+
+        # Primary keys were processed as db.Keys; for related fields
+        # the db_type of primary key of the referenced model was used,
+        # but RelatedAutoField type was not defined and resulted in
+        # "integer" being used for relations to models with AutoFields.
+        # TODO: Check with Positive/SmallIntegerField primary keys.
+        else:
+            if field.primary_key:
+                return 'key'
+            if field.rel is not None:
+                related_field = field.rel.get_related_field()
+                if related_field.get_internal_type() == 'AutoField':
+                    return 'integer'
+                else:
+                    return related_field.db_type(connection=self.connection)
+
+        db_type = field.db_type(connection=self.connection)
+
+        # Override db_type of "string" fields according to indexing.
+        if db_type in ('string', 'text'):
+            indexes = get_model_indexes(field.model)
+            if field.attname in indexes['indexed']:
+                return 'string'
+            elif field.attname in indexes['unindexed']:
+                return 'text'
+
+        return db_type
+
 
     def _create_test_db(self, *args, **kw):
         self._had_test_stubs = stub_manager.active_stubs != 'test'

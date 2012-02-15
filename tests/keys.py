@@ -243,3 +243,43 @@ class KeysTest(TestCase):
         parent = IntegerParent.objects.create(id=1)
         child = IntegerChild.objects.create(parent=parent)
         self.assertEqual(list(parent.integerchild_set.all()), [child])
+
+    @unittest.skipIf(
+         not connection.settings_dict.get('STORE_RELATIONS_AS_DB_KEYS'),
+         "No key kinds to check with the string/int foreign key storage.")
+    def test_key_kind(self):
+        """
+        Checks that db.Keys stored in the database use proper kinds.
+
+        Key kind should be the name of the table (db_table) of a model
+        for primary keys of entities, but for foreign keys, references
+        in general, it should be the db_table of the model the field
+        refers to.
+
+        Note that Django hides the underlying db.Key objects well, and
+        it does work even with wrong kinds, but keeping the data
+        consistent may be significant for external tools.
+
+        TODO: Add DictField / EmbeddedModelField and nesting checks.
+        """
+        class ParentKind(models.Model):
+            pass
+        class ChildKind(models.Model):
+            parent = models.ForeignKey(ParentKind)
+            parents = ListField(models.ForeignKey(ParentKind))
+        parent = ParentKind.objects.create(pk=1)
+        child = ChildKind.objects.create(
+            pk=2, parent=parent, parents=[parent.pk])
+        self.assertEqual(child.parent.pk, parent.pk)
+        self.assertEqual(child.parents[0], parent.pk)
+
+        from google.appengine.api.datastore import Get
+        from google.appengine.api.datastore_types import Key
+        parent_key = Key.from_path(parent._meta.db_table, 1)
+        child_key = Key.from_path(child._meta.db_table, 2)
+        parent_entity = Get(parent_key)
+        child_entity = Get(child_key)
+        parent_column = child._meta.get_field('parent').column
+        parents_column = child._meta.get_field('parents').column
+        self.assertEqual(child_entity[parent_column], parent_key)
+        self.assertEqual(child_entity[parents_column][0], parent_key)

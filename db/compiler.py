@@ -427,7 +427,7 @@ class SQLCompiler(NonrelCompiler):
                         'None')
                 else:
                     value = value.id()
-            elif db_type == 'text':
+            elif db_type == 'string':
                 if value.name() is None:
                     raise DatabaseError('Wrong type for Key. Expected string, found'
                         'None')
@@ -462,12 +462,12 @@ class SQLCompiler(NonrelCompiler):
 
         if db_type == 'gae_key':
             return value
-        elif db_type == 'longtext':
+        elif db_type == 'text':
             # long text fields cannot be indexed on GAE so use GAE's database
             # type Text
             if value is not None:
                 value = Text(value.decode('utf-8') if isinstance(value, str) else value)
-        elif db_type == 'text':
+        elif db_type == 'string':
             value = value.decode('utf-8') if isinstance(value, str) else value
         elif db_type == 'blob':
             if value is not None:

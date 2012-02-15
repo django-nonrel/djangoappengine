@@ -26,6 +26,11 @@ DATABASES = {
         # Switch to the App Engine for Business domain.
         # 'DOMAIN': 'googleplex.com',
 
+        # Store db.Keys as values of ForeignKey or other related
+        # fields. Warning: dump your data before, and reload it after
+        # changing! Defaults to False if not set.
+        # 'STORE_RELATIONS_AS_DB_KEYS': True,
+
         'DEV_APPSERVER_OPTIONS': {
             # Optional parameters for development environment.
 
