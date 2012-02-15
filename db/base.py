@@ -69,8 +69,22 @@ def destroy_datastore(paths):
 
 
 class DatabaseFeatures(NonrelDatabaseFeatures):
-    allows_primary_key_0 = True
-    supports_dicts = True
+
+    # GAE only allow strictly positive integers (and strings) to be
+    # used as key values.
+    allows_primary_key_0 = False
+
+    # Anything that results in a something different than a positive
+    # integer or a string cannot be directly used as a key on GAE.
+    # Note that DecimalField values are encoded as strings, so can be
+    # used as keys.
+    # With some encoding, we could allow most fields to be used as a
+    # primary key, but for now only mark what can and what cannot be
+    # safely used.
+    supports_primary_key_on = \
+        NonrelDatabaseFeatures.supports_primary_key_on - set((
+        'FloatField', 'DateField', 'DateTimeField', 'TimeField',
+        'BooleanField', 'NullBooleanField', 'TextField', 'XMLField'))
 
 
 class DatabaseOperations(NonrelDatabaseOperations):
