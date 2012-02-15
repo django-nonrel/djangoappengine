@@ -65,6 +65,24 @@ class DatabaseOperations(NonrelDatabaseOperations):
         self.connection.flush()
         return []
 
+    def value_to_db_auto(self, value):
+        """
+        Converts all AutoField values to integers, just like vanilla
+        Django.
+
+        Why can't we allow both strings and ints for keys? Because
+        Django cannot differentiate one from the other, for example
+        it can create an object with a key equal to int(1) and then ask
+        for it using string('1'). This is not a flaw -- ints arrive
+        as strings in requests and "untyped" field doesn't have any
+        way to distinguish one from the other (unless you'd implement
+        a custom AutoField that would use values reinforced with their
+        type, but that's rather not worth the hassle).
+        """
+        if value is None:
+            return None
+        return int(value)
+
     def value_to_db_decimal(self, value, max_digits, decimal_places):
         """
         Converts decimal to a unicode string for storage / lookup.
