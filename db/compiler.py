@@ -519,18 +519,18 @@ class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
     def execute_sql(self, result_type=MULTI):
         # Modify query to fetch pks only and then execute the query
         # to get all pks.
-        pk = self.query.model._meta.pk.name
-        self.query.add_immediate_loading([pk])
+        pk_field = self.query.model._meta.pk
+        self.query.add_immediate_loading([pk_field.name])
         pks = [row for row in self.results_iter()]
-        self.update_entities(pks)
+        self.update_entities(pks, pk_field)
         return len(pks)
 
-    def update_entities(self, pks):
+    def update_entities(self, pks, pk_field):
         for pk in pks:
-            self.update_entity(pk[0])
+            self.update_entity(pk[0], pk_field)
 
     @commit_locked
-    def update_entity(self, pk):
+    def update_entity(self, pk, pk_field):
         gae_query = self.build_query()
         entity = Get(create_key(self.query.get_meta().db_table, pk))
 
