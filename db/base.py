@@ -107,8 +107,6 @@ class DatabaseOperations(NonrelDatabaseOperations):
         # Convert to a string.
         if max_digits is None:
             max_digits = self.DEFAULT_MAX_DIGITS
-
-
         if decimal_places is None:
             value = unicode(value)
             decimal_places = 0
@@ -122,6 +120,24 @@ class DatabaseOperations(NonrelDatabaseOperations):
         if n < max_digits - decimal_places:
             value = u'0' * (max_digits - decimal_places - n) + value
         return sign + value
+
+    def convert_values(self, value, field):
+        """
+        Decodes decimal encoding done in value_to_db_decimal, also
+        casts AutoField values to ints (new entities may get a key
+        with a long id from the datastore).
+        """
+        if value is None:
+            return None
+
+        field_kind = field.get_internal_type()
+
+        if field_kind == 'AutoField':
+            return int(value)
+        elif field_kind == 'DecimalField':
+            return decimal.Decimal(value)
+
+        return value
 
 
 class DatabaseClient(NonrelDatabaseClient):
