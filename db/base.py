@@ -15,10 +15,13 @@ from google.appengine.api.datastore_types import Blob, Key, Text, \
 from google.appengine.api.namespace_manager import set_namespace
 from google.appengine.ext.db.metadata import get_kinds, get_namespaces
 
-from djangotoolbox.db.base import \
-    NonrelDatabaseClient, NonrelDatabaseFeatures, \
-    NonrelDatabaseIntrospection, NonrelDatabaseOperations, \
-    NonrelDatabaseValidation, NonrelDatabaseWrapper
+from djangotoolbox.db.base import (
+    NonrelDatabaseClient,
+    NonrelDatabaseFeatures,
+    NonrelDatabaseIntrospection,
+    NonrelDatabaseOperations,
+    NonrelDatabaseValidation,
+    NonrelDatabaseWrapper)
 
 from ..boot import DATA_ROOT
 from ..utils import appid, on_production_server

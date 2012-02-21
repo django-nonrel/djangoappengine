@@ -107,8 +107,8 @@ def find_commands(management_dir):
 def setup_threading():
     if sys.version_info >= (2, 7):
         return
-    # TODO: On Python 2.5 GAE's threading.local doesn't work correctly
-    #       with subclassing.
+    # XXX: On Python 2.5 GAE's threading.local doesn't work correctly
+    #      with subclassing.
     try:
         from django.utils._threading_local import local
         import threading

@@ -183,7 +183,7 @@ class FilterTest(TestCase):
         self.assertEquals(FieldsWithOptionsModel.objects.filter(
             floating_point__isnull=True).count(), 1)
 
-        # TODO: These filters will not work because of a Django bug.
+        # XXX: These filters will not work because of a Django bug.
 #        self.assertEquals(FieldsWithOptionsModel.objects.filter(
 #            foreign_key=None).count(), 1)
 

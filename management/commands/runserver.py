@@ -152,7 +152,7 @@ class Command(BaseRunserverCommand):
             if isinstance(connection, DatabaseWrapper):
                 for key, path in get_datastore_paths(
                         connection.settings_dict).items():
-                    # TODO: Remove this when SDK 1.4.3 is released.
+                    # XXX/TODO: Remove this when SDK 1.4.3 is released.
                     if key == 'prospective_search_path':
                         continue
 

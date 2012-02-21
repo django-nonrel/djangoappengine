@@ -12,8 +12,12 @@ from google.appengine.api.datastore import Entity, Query, MultiQuery, \
 from google.appengine.api.datastore_errors import Error as GAEError
 from google.appengine.api.datastore_types import Key, Text
 
-from djangotoolbox.db.basecompiler import NonrelQuery, NonrelCompiler, \
-    NonrelInsertCompiler, NonrelUpdateCompiler, NonrelDeleteCompiler
+from djangotoolbox.db.basecompiler import (
+    NonrelQuery,
+    NonrelCompiler,
+    NonrelInsertCompiler,
+    NonrelUpdateCompiler,
+    NonrelDeleteCompiler)
 
 from .db_settings import get_model_indexes
 from .expressions import ExpressionEvaluator
@@ -203,7 +207,7 @@ class GAEQuery(NonrelQuery):
         # that they're not negated.
         if lookup_type == 'isnull':
             if (negated and value) or not value:
-                # TODO: Is everything greater than None?
+                # TODO/XXX: Is everything greater than None?
                 op = '>'
             else:
                 op = '='
