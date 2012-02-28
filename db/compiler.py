@@ -194,8 +194,7 @@ class GAEQuery(NonrelQuery):
                                     "Did you mean __in=[...]?")
             if not isinstance(value, (tuple, list)):
                 value = [value]
-            pks = [self.compiler.value_for_db(pk, field, True)
-                   for pk in value if pk is not None]
+            pks = [pk for pk in value if pk is not None]
             if negated:
                 self.excluded_pks = pks
             else:
@@ -239,8 +238,9 @@ class GAEQuery(NonrelQuery):
             self._combine_filters(field, op_values)
             return
         elif lookup_type == 'startswith':
-            self._add_filter(field, '>=', value)
-            self._add_filter(field, '<=', value + u'\ufffd')
+            # Lookup argument was converted to [arg, arg + u'\ufffd'].
+            self._add_filter(field, '>=', value[0])
+            self._add_filter(field, '<=', value[1])
             return
         elif lookup_type in ('range', 'year'):
             self._add_filter(field, '>=', value[0])
@@ -266,7 +266,6 @@ class GAEQuery(NonrelQuery):
                 column = field.column
             key = '%s %s' % (column, op)
 
-            value = self.compiler.value_for_db(value, field, True)
             if isinstance(value, Text):
                 raise DatabaseError("TextField is not indexed, by default, "
                                     "so you can't filter on it. Please add "
@@ -346,10 +345,25 @@ class GAEQuery(NonrelQuery):
 
 class SQLCompiler(NonrelCompiler):
     """
-    TODO: Make it a base class of all compilers back, add FetchCompiler
-          later on.
+    Base class for all GAE compilers.
     """
     query_class = GAEQuery
+
+    def value_for_db(self, value, field, lookup=None):
+        """
+        We'll simulate `startswith` lookups with two inequalities:
+
+            property >= value and property <= value + u'\ufffd',
+
+        and need to "double" the value before passing it through the
+        actual datastore conversions.
+        """
+        if lookup == 'startswith':
+            return [super(SQLCompiler, self).value_for_db(value,
+                                                          field, lookup),
+                    super(SQLCompiler, self).value_for_db(value + u'\ufffd',
+                                                          field, lookup)]
+        return super(SQLCompiler, self).value_for_db(value, field, lookup)
 
 
 class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):

@@ -159,21 +159,13 @@ class DatabaseOperations(NonrelDatabaseOperations):
                 value, field.max_digits, field.decimal_places)
 
         # Create GAE db.Keys from Django keys.
+        # We use model's table name as key kind (the table of the model
+        # of the instance that the key identifies, for ForeignKeys and
+        # other relations).
         if db_type == 'key':
 #            value = self.encode_for_db_key(value, field_kind)
             try:
-
-                # We use model's table name as key kind, but this has
-                # to be the table of the model of the instance that the
-                # key identifies, that's why for ForeignKeys and other
-                # relations we'll use the table of the model the field
-                # refers to.
-                if field.rel is not None:
-                    db_table = field.rel.to._meta.db_table
-                else:
-                    db_table = field.model._meta.db_table
-
-                value = key_from_path(db_table, value)
+                value = key_from_path(field.model._meta.db_table, value)
             except (BadArgumentError, BadValueError,):
                 raise DatabaseError("Only strings and positive integers "
                                     "may be used as keys on GAE.")
