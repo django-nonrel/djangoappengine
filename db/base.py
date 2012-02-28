@@ -4,7 +4,6 @@ import logging
 import os
 import shutil
 
-from django.db.backends.util import format_number
 from django.db.utils import DatabaseError
 
 from google.appengine.api.datastore import Delete, Query
@@ -22,6 +21,7 @@ from djangotoolbox.db.base import (
     NonrelDatabaseOperations,
     NonrelDatabaseValidation,
     NonrelDatabaseWrapper)
+from djangotoolbox.db.utils import decimal_to_string
 
 from ..boot import DATA_ROOT
 from ..utils import appid, on_production_server
@@ -93,10 +93,6 @@ class DatabaseFeatures(NonrelDatabaseFeatures):
 class DatabaseOperations(NonrelDatabaseOperations):
     compiler_module = __name__.rsplit('.', 1)[0] + '.compiler'
 
-    # Used when a DecimalField does not specify max_digits or when
-    # encoding a float as a string, fixed to preserve comparisons.
-    DEFAULT_MAX_DIGITS = 16
-
     # Date used to store times as datetimes.
     # TODO: Use just date()?
     DEFAULT_DATE = datetime.date(1970, 1, 1)
@@ -126,52 +122,9 @@ class DatabaseOperations(NonrelDatabaseOperations):
             return None
         return int(value)
 
-    def value_to_db_decimal(self, value, max_digits, decimal_places):
-        """
-        Converts decimal to a unicode string for storage / lookup.
-
-        We need to convert in a way that preserves order -- if one
-        decimal is less than another, their string representations
-        should compare the same.
-
-        This is more a field conversion than a type conversion because
-        it needs a fixed field attributes to function and doesn't work
-        for special decimal values like Infinity or NaN.
-
-        TODO: Can't this be done using string.format()?
-              Not in Python 2.5, str.format is backported to 2.6 only.
-        """
-        if value is None:
-            return None
-
-        # Handle sign separately.
-        if value.is_signed():
-            sign = u'-'
-            value = abs(value)
-        else:
-            sign = u''
-
-        # Convert to a string.
-        if max_digits is None:
-            max_digits = self.DEFAULT_MAX_DIGITS
-        if decimal_places is None:
-            value = unicode(value)
-            decimal_places = 0
-        else:
-            value = format_number(value, max_digits, decimal_places)
-
-        # Pad with zeroes to a constant width.
-        n = value.find('.')
-        if n < 0:
-            n = len(value)
-        if n < max_digits - decimal_places:
-            value = u'0' * (max_digits - decimal_places - n) + value
-        return sign + value
-
     def convert_values(self, value, field):
         """
-        Decodes decimal encoding done in value_to_db_decimal, also
-        casts AutoField values to ints (new entities may get a key
+        Casts AutoField values to ints (new entities may get a key
         with a long id from the datastore).
         """
         if value is None:
@@ -181,8 +134,6 @@ class DatabaseOperations(NonrelDatabaseOperations):
 
         if field_kind == 'AutoField':
             return int(value)
-        elif field_kind == 'DecimalField':
-            return decimal.Decimal(value)
 
         return value
 
@@ -201,6 +152,11 @@ class DatabaseOperations(NonrelDatabaseOperations):
         # Parent can handle iterable fields and Django wrappers.
         value = super(DatabaseOperations, self).value_for_db(
             value, field, field_kind, db_type, lookup)
+
+        # Convert decimals to strings preserving order.
+        if field_kind == 'DecimalField':
+            value = decimal_to_string(
+                value, field.max_digits, field.decimal_places)
 
         # Create GAE db.Keys from Django keys.
         if db_type == 'key':
@@ -277,6 +233,10 @@ class DatabaseOperations(NonrelDatabaseOperations):
         # Convert GAE Blobs to plain strings for Django.
         elif db_type == 'bytes':
             value = str(value)
+
+        # Revert the decimal-to-string encoding.
+        if field_kind == 'DecimalField':
+            value = decimal.Decimal(value)
 
         return super(DatabaseOperations, self).value_from_db(
             value, field, field_kind, db_type)
