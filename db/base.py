@@ -104,39 +104,6 @@ class DatabaseOperations(NonrelDatabaseOperations):
         self.connection.flush()
         return []
 
-    def value_to_db_auto(self, value):
-        """
-        Converts all AutoField values to integers, just like vanilla
-        Django.
-
-        Why can't we allow both strings and ints for keys? Because
-        Django cannot differentiate one from the other, for example
-        it can create an object with a key equal to int(1) and then ask
-        for it using string('1'). This is not a flaw -- ints arrive
-        as strings in requests and "untyped" field doesn't have any
-        way to distinguish one from the other (unless you'd implement
-        a custom AutoField that would use values reinforced with their
-        type, but that's rather not worth the hassle).
-        """
-        if value is None:
-            return None
-        return int(value)
-
-    def convert_values(self, value, field):
-        """
-        Casts AutoField values to ints (new entities may get a key
-        with a long id from the datastore).
-        """
-        if value is None:
-            return None
-
-        field_kind = field.get_internal_type()
-
-        if field_kind == 'AutoField':
-            return int(value)
-
-        return value
-
     def value_for_db(self, value, field, field_kind, db_type, lookup):
         """
         GAE database may store a restricted set of Python types, for
