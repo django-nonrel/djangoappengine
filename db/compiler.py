@@ -90,8 +90,7 @@ class GAEQuery(NonrelQuery):
         self.included_pks = None
         self.excluded_pks = ()
         self.has_negated_exact_filter = False
-        self.ordering = ()
-        self.gae_ordering = []
+        self.ordering = []
         self.db_table = self.query.get_meta().db_table
         self.pks_only = (len(fields) == 1 and fields[0].primary_key)
         start_cursor = getattr(self.query, '_gae_start_cursor', None)
@@ -167,12 +166,10 @@ class GAEQuery(NonrelQuery):
 
     @safe_call
     def order_by(self, ordering):
-        self.ordering = ordering
-        for order, descending in self.ordering:
+        for field, descending in ordering:
+            column = '__key__' if field.primary_key else field.column
             direction = Query.DESCENDING if descending else Query.ASCENDING
-            if order == self.query.get_meta().pk.column:
-                order = '__key__'
-            self.gae_ordering.append((order, direction))
+            self.ordering.append((column, direction))
 
     @safe_call
     def add_filter(self, field, lookup_type, negated, value):
@@ -313,9 +310,9 @@ class GAEQuery(NonrelQuery):
     @safe_call
     def _build_query(self):
         for query in self.gae_query:
-            query.Order(*self.gae_ordering)
+            query.Order(*self.ordering)
         if len(self.gae_query) > 1:
-            return MultiQuery(self.gae_query, self.gae_ordering)
+            return MultiQuery(self.gae_query, self.ordering)
         return self.gae_query[0]
 
     def get_matching_pk(self, low_mark=0, high_mark=None):
