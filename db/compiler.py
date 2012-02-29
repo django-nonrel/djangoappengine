@@ -335,12 +335,13 @@ class GAEQuery(NonrelQuery):
         return self._order_in_memory(left, right)
 
     def matches_filters(self, entity):
+        """
+        Checks if the GAE entity fetched from the database satisfies
+        the current query's constraints.
+        """
         item = dict(entity)
-        pk = self.query.get_meta().pk
-        value = self.compiler.value_from_db(entity.key(), pk)
-        item[pk.column] = value
-        result = self._matches_filters(item, self.query.where)
-        return result
+        item[self.query.get_meta().pk.column] = entity.key()
+        return self._matches_filters(item, self.query.where)
 
 
 class SQLCompiler(NonrelCompiler):
