@@ -104,7 +104,7 @@ class DatabaseOperations(NonrelDatabaseOperations):
         self.connection.flush()
         return []
 
-    def value_for_db(self, value, field, field_kind, db_type, lookup):
+    def _value_for_db(self, value, field, field_kind, db_type, lookup):
         """
         GAE database may store a restricted set of Python types, for
         some cases it has its own types like Key, Text or Blob.
@@ -117,7 +117,7 @@ class DatabaseOperations(NonrelDatabaseOperations):
             return None
 
         # Parent can handle iterable fields and Django wrappers.
-        value = super(DatabaseOperations, self).value_for_db(
+        value = super(DatabaseOperations, self)._value_for_db(
             value, field, field_kind, db_type, lookup)
 
         # Convert decimals to strings preserving order.
@@ -130,7 +130,7 @@ class DatabaseOperations(NonrelDatabaseOperations):
         # of the instance that the key identifies, for ForeignKeys and
         # other relations).
         if db_type == 'key':
-#            value = self.encode_for_db_key(value, field_kind)
+#            value = self._value_for_db_key(value, field_kind)
             try:
                 value = key_from_path(field.model._meta.db_table, value)
             except (BadArgumentError, BadValueError,):
@@ -157,7 +157,7 @@ class DatabaseOperations(NonrelDatabaseOperations):
 
         return value
 
-    def value_from_db(self, value, field, field_kind, db_type):
+    def _value_from_db(self, value, field, field_kind, db_type):
         """
         Undoes conversions done in value_for_db.
         """
@@ -173,7 +173,7 @@ class DatabaseOperations(NonrelDatabaseOperations):
                 "dumping data, changing to new storage and reloading."
             assert value.parent() is None, "Parents are not yet supported!"
             value = value.id_or_name()
-#            value = self.decode_from_db_key(value, field_kind)
+#            value = self._value_from_db_key(value, field_kind)
 
         # Always retrieve strings as unicode (old datasets may
         # contain non-unicode strings).
@@ -197,10 +197,10 @@ class DatabaseOperations(NonrelDatabaseOperations):
         if field_kind == 'DecimalField':
             value = decimal.Decimal(value)
 
-        return super(DatabaseOperations, self).value_from_db(
+        return super(DatabaseOperations, self)._value_from_db(
             value, field, field_kind, db_type)
 
-#    def value_for_db_key(self, value, field_kind):
+#    def _value_for_db_key(self, value, field_kind):
 #        """
 #        Converts values to be used as entity keys to strings,
 #        trying (but not fully succeeding) to preserve comparisons.
