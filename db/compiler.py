@@ -352,22 +352,6 @@ class SQLCompiler(NonrelCompiler):
     """
     query_class = GAEQuery
 
-    def value_for_db(self, value, field, lookup=None):
-        """
-        We'll simulate `startswith` lookups with two inequalities:
-
-            property >= value and property <= value + u'\ufffd',
-
-        and need to "double" the value before passing it through the
-        actual datastore conversions.
-        """
-        if lookup == 'startswith':
-            return [super(SQLCompiler, self).value_for_db(value,
-                                                          field, lookup),
-                    super(SQLCompiler, self).value_for_db(value + u'\ufffd',
-                                                          field, lookup)]
-        return super(SQLCompiler, self).value_for_db(value, field, lookup)
-
 
 class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
 
@@ -422,7 +406,7 @@ class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
     @commit_locked
     def update_entity(self, pk, pk_field):
         gae_query = self.build_query()
-        entity = Get(self.value_for_db(pk, pk_field))
+        entity = Get(self.ops.value_for_db(pk, pk_field))
 
         if not gae_query.matches_filters(entity):
             return
@@ -443,7 +427,7 @@ class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
             if hasattr(value, 'as_sql'):
                 value = value.as_sql(lambda n: n, self.connection)
 
-            entity[field.column] = self.value_for_db(value, field)
+            entity[field.column] = self.ops.value_for_db(value, field)
 
         Put(entity)
 

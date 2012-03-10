@@ -104,6 +104,21 @@ class DatabaseOperations(NonrelDatabaseOperations):
         self.connection.flush()
         return []
 
+    def value_for_db(self, value, field, lookup=None):
+        """
+        We'll simulate `startswith` lookups with two inequalities:
+
+            property >= value and property <= value + u'\ufffd',
+
+        and need to "double" the value before passing it through the
+        actual datastore conversions.
+        """
+        super_value_for_db = super(DatabaseOperations, self).value_for_db
+        if lookup == 'startswith':
+            return [super_value_for_db(value, field, lookup),
+                    super_value_for_db(value + u'\ufffd', field, lookup)]
+        return super_value_for_db(value, field, lookup)
+
     def _value_for_db(self, value, field, field_kind, db_type, lookup):
         """
         GAE database may store a restricted set of Python types, for
