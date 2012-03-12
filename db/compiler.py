@@ -162,10 +162,14 @@ class GAEQuery(NonrelQuery):
 
     @safe_call
     def order_by(self, ordering):
-        for field, descending in ordering:
-            column = '__key__' if field.primary_key else field.column
-            direction = Query.DESCENDING if descending else Query.ASCENDING
-            self.ordering.append((column, direction))
+
+        # GAE doesn't have any kind of natural ordering?
+        if not isinstance(ordering, bool):
+            for field, ascending in ordering:
+                column = '__key__' if field.primary_key else field.column
+                direction = Query.ASCENDING if ascending else Query.DESCENDING
+                self.ordering.append((column, direction))
+
 
     @safe_call
     def add_filter(self, field, lookup_type, negated, value):
