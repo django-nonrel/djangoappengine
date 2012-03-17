@@ -46,20 +46,20 @@ class GAEKey(object):
     def __cmp__(self, other):
         if not isinstance(other, GAEKey):
             return 1
-        
+
         if self._real_key is not None and other._real_key is not None:
             return cmp(self._real_key, other._real_key)
-        
+
         if self._id_or_name is None or other._id_or_name is None:
             raise ValueError("You can't compare unsaved keys: %s %s" % (self, other))
 
         result = 0
         if self._parent_key is not None:
             result = cmp(self._parent_key, other._parent_key)
-        
+
         if result == 0:
             result = cmp(self._id_or_name, other._id_or_name)
-        
+
         return result
 
     def __hash__(self):
@@ -70,3 +70,6 @@ class GAEKey(object):
 
     def __str__(self):
         return str(self._id_or_name)
+
+    def __repr__(self):
+        return "%s(id_or_name=%r, parent_key=%r, real_key=%r)" % (self.__class__, self._id_or_name, self._parent_key, self._real_key)
