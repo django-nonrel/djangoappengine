@@ -16,7 +16,9 @@ def get_cursor(queryset):
     # Evaluate QuerySet
     len(queryset)
     cursor = getattr(queryset.query, '_gae_cursor', None)
-    return Cursor.to_websafe_string(cursor)
+    if cursor:
+        return Cursor.to_websafe_string(cursor)
+    return None
 
 def set_cursor(queryset, start=None, end=None):
     queryset = queryset.all()
