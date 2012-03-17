@@ -1,3 +1,4 @@
+import mimetypes
 import os
 
 try:
@@ -15,11 +16,10 @@ from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpResponse
 from django.utils.encoding import smart_str, force_unicode
 
+from google.appengine.api import files
 from google.appengine.ext.blobstore import BlobInfo, BlobKey, delete, \
     create_upload_url, BLOB_KEY_HEADER, BLOB_RANGE_HEADER, BlobReader
 
-from google.appengine.api import files
-import mimetypes
 
 def prepare_upload(request, url, **kwargs):
     return create_upload_url(url), {}
@@ -61,7 +61,8 @@ class BlobstoreStorage(Storage):
         elif hasattr(content, 'blobstore_info'):
             data = content.blobstore_info
         elif isinstance(content, File):
-            file_name = files.blobstore.create(mime_type='application/octet-stream')
+            guessed_type = mimetypes.guess_type(name)[0]
+            file_name = files.blobstore.create(mime_type=guessed_type or 'application/octet-stream')
 
             with files.open(file_name, 'a') as f:
                 for chunk in content.chunks():
