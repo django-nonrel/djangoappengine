@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from urllib2 import HTTPError, URLError
 
@@ -41,6 +42,8 @@ class StubManager(object):
     def activate_test_stubs(self, connection):
         if self.active_stubs == 'test':
             return
+
+        os.environ['HTTP_HOST'] = "%s.appspot.com" % appid
 
         appserver_opts = connection.settings_dict.get('DEV_APPSERVER_OPTIONS', {})
         high_replication = appserver_opts.get('high_replication', False)
