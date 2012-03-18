@@ -40,11 +40,7 @@ class Command(BaseCommand):
                     settings[key] = "%s-testdb" % path
                 break
 
-        # reset connections list so its repopulated
-        db.connections._connections = {}
-        db.connection = db.connections[db.DEFAULT_DB_ALIAS]
-
-        # also reset stub manager
+        # reset stub manager
         stub_manager.active_stubs = None
 
         # run flush on that db
@@ -67,3 +63,4 @@ class Command(BaseCommand):
         # multiple times.
         shutdown_message = '\nServer stopped.\nNote that the test database, %r, has not been deleted. You can explore it on your own.' % db_name
         call_command('runserver', addrport=addrport, shutdown_message=shutdown_message, use_reloader=False, use_ipv6=options['use_ipv6'])
+
