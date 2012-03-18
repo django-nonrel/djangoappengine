@@ -9,7 +9,6 @@ class GAEKeyField(models.Field):
     __metaclass__ = models.SubfieldBase
 
     def __init__(self, *args, **kwargs):
-        kwargs['null'] = True
         kwargs['blank'] = True
         self.parent_key_attname = kwargs.pop('parent_key_name', None)
 
@@ -23,7 +22,7 @@ class GAEKeyField(models.Field):
             assert not cls._meta.has_auto_field, "A model can't have more than one auto field."
             cls._meta.has_auto_field = True
             cls._meta.auto_field = self
-        
+
             if self.parent_key_attname is not None:
                 def get_parent_key(instance, instance_type=None):
                     if instance is None:
@@ -46,6 +45,8 @@ class GAEKeyField(models.Field):
     def to_python(self, value):
         if value is None:
             return None
+        if isinstance(value, basestring) and len(value) == 0:
+            return None
         if isinstance(value, GAEKey):
             return value
         if isinstance(value, Key):
@@ -62,7 +63,7 @@ class GAEKeyField(models.Field):
 
     def get_prep_value(self, value):
         if isinstance(value, GAEAncestorKey):
-            return value        
+            return value
         return self.to_python(value)
 
     def formfield(self, **kwargs):
