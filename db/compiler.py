@@ -22,7 +22,7 @@ from djangotoolbox.db.basecompiler import (
 
 from .db_settings import get_model_indexes
 from .expressions import ExpressionEvaluator
-from .utils import commit_locked
+from .utils import AncestorKey, commit_locked
 
 
 # Valid query types (a dictionary is used for speedy lookups).
