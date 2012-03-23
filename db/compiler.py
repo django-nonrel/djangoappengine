@@ -22,8 +22,6 @@ from djangotoolbox.db.basecompiler import (
 
 from .db_settings import get_model_indexes
 from .expressions import ExpressionEvaluator
-from ..fields import GAEKeyField
-from ..models import GAEKey, GAEAncestorKey
 from .utils import commit_locked
 
 
@@ -193,12 +191,12 @@ class GAEQuery(NonrelQuery):
         # Optimization: batch-get by key; this is only suitable for
         # primary keys, not for anything that uses the key type.
         if field.primary_key and lookup_type in ('exact', 'in'):
-            if lookup_type == 'exact' and isinstance(value, GAEAncestorKey):
+            if lookup_type == 'exact' and isinstance(value, AncestorKey):
                 if negated:
-                    raise DatabaseError("You can't negate an ancestor operation.")
+                    raise DatabaseError("You can't negate an ancestor operator.")
                 if self.ancestor_key is not None:
-                    raise DatabaseError("You can't use more than one ancestor operation.")
-                self.ancestor_key = value.key()
+                    raise DatabaseError("You can't use more than one ancestor operator.")
+                self.ancestor_key = value.key
                 return
 
             if self.included_pks is not None:
@@ -383,6 +381,7 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
                 if value is not None:
                     kwds['id'] = value.id()
                     kwds['name'] = value.name()
+                    kwds['parent'] = value.parent()
 
             # GAE does not store empty lists (and even does not allow
             # passing empty lists to Entity.update) so skip them.

@@ -155,7 +155,8 @@ class DatabaseOperations(NonrelDatabaseOperations):
         if db_type == 'key':
 #            value = self._value_for_db_key(value, field_kind)
             try:
-                value = key_from_path(field.model._meta.db_table, value)
+                if not isinstance(value, Key):
+                    value = key_from_path(field.model._meta.db_table, value)
             except (BadArgumentError, BadValueError,):
                 raise DatabaseError("Only strings and positive integers "
                                     "may be used as keys on GAE.")
