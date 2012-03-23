@@ -4,16 +4,14 @@ from django.utils.encoding import smart_unicode
 
 from djangoappengine.db.utils import AncestorKey
 
-from google.appengine.api.datastore import Key, datastore_errors
-
-import logging
+from google.appengine.api.datastore import Key
+from google.appengine.api.datastore.datastore_errors import BadKeyError
 
 class DbKeyField(models.Field):
     description = "A field for native database key objects"
     __metaclass__ = models.SubfieldBase
 
     def __init__(self, *args, **kwargs):
-        kwargs['null'] = True
         kwargs['blank'] = True
 
         self.parent_key_attname = kwargs.pop('parent_key_name', None)
@@ -55,9 +53,12 @@ class DbKeyField(models.Field):
         if isinstance(value, Key):
             return value
         if isinstance(value, basestring):
+            if len(value) == 0:
+                return None
+
             try:
                 return Key(encoded=value)
-            except datastore_errors.BadKeyError:
+            except BadKeyError:
                 return Key.from_path(self.model._meta.db_table, long(value))
         if isinstance(value, (int, long)):
             return Key.from_path(self.model._meta.db_table, value)
