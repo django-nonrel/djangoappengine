@@ -1,11 +1,13 @@
 import os
 import sys
 
+
 # Add parent folder to sys.path, so we can import boot.
 # App Engine causes main.py to be reloaded if an exception gets raised
-# on the first request of a main.py instance, so don't add project_dir multiple
-# times.
-project_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+# on the first request of a main.py instance, so don't add project_dir
+# multiple times.
+project_dir = os.path.abspath(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 if project_dir not in sys.path or sys.path.index(project_dir) > 0:
     while project_dir in sys.path:
         sys.path.remove(project_dir)
@@ -25,11 +27,12 @@ if 'django' in sys.modules and sys.modules['django'].VERSION < (1, 2):
 from djangoappengine.boot import setup_env
 setup_env()
 
+
 def validate_models():
-    """Since BaseRunserverCommand is only run once, we need to call
+    """
+    Since BaseRunserverCommand is only run once, we need to call
     model valdidation here to ensure it is run every time the code
     changes.
-
     """
     import logging
     from django.core.management.validation import get_validation_errors
@@ -46,7 +49,8 @@ def validate_models():
     if num_errors:
         s.seek(0)
         error_text = s.read()
-        logging.critical("One or more models did not validate:\n%s" % error_text)
+        logging.critical("One or more models did not validate:\n%s" %
+                         error_text)
     else:
         logging.info("All models validated.")
 
@@ -58,21 +62,24 @@ from django.core.handlers.wsgi import WSGIHandler
 from google.appengine.ext.webapp.util import run_wsgi_app
 from django.conf import settings
 
+
 def log_traceback(*args, **kwargs):
     import logging
-    logging.exception('Exception in request:')
+    logging.exception("Exception in request:")
 
 from django.core import signals
 signals.got_request_exception.connect(log_traceback)
 
-# Create a Django application for WSGI
+
+# Create a Django application for WSGI.
 application = WSGIHandler()
 
-# Add the staticfiles handler if necessary
+# Add the staticfiles handler if necessary.
 if settings.DEBUG and 'django.contrib.staticfiles' in settings.INSTALLED_APPS:
     from django.contrib.staticfiles.handlers import StaticFilesHandler
     application = StaticFilesHandler(application)
 
 if getattr(settings, 'ENABLE_APPSTATS', False):
-    from google.appengine.ext.appstats.recording import appstats_wsgi_middleware
+    from google.appengine.ext.appstats.recording import \
+        appstats_wsgi_middleware
     application = appstats_wsgi_middleware(application)

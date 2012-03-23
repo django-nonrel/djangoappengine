@@ -1,4 +1,4 @@
-# Python 2.5 CGI handler
+# Python 2.5 CGI handler.
 import os
 import sys
 
@@ -8,10 +8,11 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 from djangoappengine.boot import setup_logging, env_ext
 from django.conf import settings
 
+
 path_backup = None
 
 def real_main():
-    # Reset path and environment variables
+    # Reset path and environment variables.
     global path_backup
     try:
         sys.path = path_backup[:]
@@ -22,6 +23,7 @@ def real_main():
 
     # Run the WSGI CGI handler with that application.
     run_wsgi_app(application)
+
 
 def profile_main(func):
     from cStringIO import StringIO
@@ -61,7 +63,8 @@ def profile_main(func):
         stats.print_callees()
     if 'callers' in extra_output:
         stats.print_callers()
-    logging.info('Profile data:\n%s', stream.getvalue())
+    logging.info("Profile data:\n%s.", stream.getvalue())
+
 
 def make_profileable(func):
     if getattr(settings, 'ENABLE_PROFILER', False):

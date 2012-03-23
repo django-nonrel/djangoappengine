@@ -1,4 +1,4 @@
-# Initialize App Engine SDK if necessary
+# Initialize App Engine SDK if necessary.
 try:
     from google.appengine.api import apiproxy_stub_map
 except ImportError:
@@ -6,6 +6,7 @@ except ImportError:
     setup_env()
 
 from djangoappengine.utils import on_production_server, have_appserver
+
 
 DEBUG = not on_production_server
 TEMPLATE_DEBUG = DEBUG
@@ -16,26 +17,34 @@ DATABASES = {
     'default': {
         'ENGINE': 'djangoappengine.db',
 
-        # Other settings which you might want to override in your settings.py
+        # Other settings which you might want to override in your
+        # settings.py.
 
-        # Activates high-replication support for remote_api
+        # Activates high-replication support for remote_api.
         # 'HIGH_REPLICATION': True,
 
-        # Switch to the App Engine for Business domain
+        # Switch to the App Engine for Business domain.
         # 'DOMAIN': 'googleplex.com',
 
-        'DEV_APPSERVER_OPTIONS': {
-            # Optional parameters for development environment
+        # Store db.Keys as values of ForeignKey or other related
+        # fields. Warning: dump your data before, and reload it after
+        # changing! Defaults to False if not set.
+        # 'STORE_RELATIONS_AS_DB_KEYS': True,
 
-            # Emulate the high-replication datastore locally
+        'DEV_APPSERVER_OPTIONS': {
+            # Optional parameters for development environment.
+
+            # Emulate the high-replication datastore locally.
+            # TODO: Likely to break loaddata (some records missing).
             # 'high_replication' : True,
 
-            # Use the SQLite backend for local storage (instead of default
-            # in-memory datastore). Useful for testing with larger datasets
-            # or when debugging concurrency/async issues (separate processes
-            # will share a common db state, rather than syncing on startup).
+            # Use the SQLite backend for local storage (instead of
+            # default in-memory datastore). Useful for testing with
+            # larger datasets or when debugging concurrency/async
+            # issues (separate processes will share a common db state,
+            # rather than syncing on startup).
             # 'use_sqlite': True,
-            }
+        },
     },
 }
 
@@ -44,7 +53,7 @@ if on_production_server:
 else:
     EMAIL_BACKEND = 'djangoappengine.mail.EmailBackend'
 
-# Specify a queue name for the async. email backend
+# Specify a queue name for the async. email backend.
 EMAIL_QUEUE_NAME = 'default'
 
 PREPARE_UPLOAD_BACKEND = 'djangoappengine.storage.prepare_upload'

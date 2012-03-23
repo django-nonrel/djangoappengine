@@ -1,33 +1,31 @@
-from .db_settings import get_model_indexes
-from .utils import commit_locked
-from .expressions import ExpressionEvaluator
-from ..fields import GAEKeyField
-from ..models import GAEKey, GAEAncestorKey
-
-import datetime
+from functools import wraps
 import sys
 
+from django.db.models.fields import AutoField
 from django.db.models.sql import aggregates as sqlaggregates
 from django.db.models.sql.constants import LOOKUP_SEP, MULTI, SINGLE
 from django.db.models.sql.where import AND, OR
 from django.db.utils import DatabaseError, IntegrityError
 from django.utils.tree import Node
 
-from functools import wraps
-
 from google.appengine.api.datastore import Entity, Query, MultiQuery, \
-    Put, Get, Delete, Key
+    Put, Get, Delete
 from google.appengine.api.datastore_errors import Error as GAEError
-from google.appengine.api.datastore_types import Text, Category, Email, Link, \
-    PhoneNumber, PostalAddress, Text, Blob, ByteString, GeoPt, IM, Key, \
-    Rating, BlobKey
+from google.appengine.api.datastore_types import Key, Text
 
-from djangotoolbox.db.basecompiler import NonrelQuery, NonrelCompiler, \
-    NonrelInsertCompiler, NonrelUpdateCompiler, NonrelDeleteCompiler
+from djangotoolbox.db.basecompiler import (
+    NonrelQuery,
+    NonrelCompiler,
+    NonrelInsertCompiler,
+    NonrelUpdateCompiler,
+    NonrelDeleteCompiler)
 
-import cPickle as pickle
+from .db_settings import get_model_indexes
+from .expressions import ExpressionEvaluator
+from ..fields import GAEKeyField
+from ..models import GAEKey, GAEAncestorKey
+from .utils import commit_locked
 
-import decimal
 
 # Valid query types (a dictionary is used for speedy lookups).
 OPERATORS_MAP = {
@@ -37,7 +35,7 @@ OPERATORS_MAP = {
     'lt': '<',
     'lte': '<=',
 
-    # The following operators are supported with special code below:
+    # The following operators are supported with special code below.
     'isnull': None,
     'in': None,
     'startswith': None,
@@ -45,18 +43,27 @@ OPERATORS_MAP = {
     'year': None,
 }
 
+# GAE filters used for negated Django lookups.
 NEGATION_MAP = {
     'gt': '<=',
     'gte': '<',
     'lt': '>=',
     'lte': '>',
-    # TODO: support these filters
-    #'exact': '!=', # this might actually become individual '<' and '>' queries
+    # TODO: Support: "'exact': '!='" (it might actually become
+    #       individual '<' and '>' queries).
 }
 
+# In some places None is an allowed value, and we need to distinguish
+# it from the lack of value.
 NOT_PROVIDED = object()
 
+
 def safe_call(func):
+    """
+    Causes the decorated function to reraise GAE datastore errors as
+    Django DatabaseErrors.
+    """
+
     @wraps(func)
     def _func(*args, **kwargs):
         try:
@@ -65,30 +72,32 @@ def safe_call(func):
             raise DatabaseError, DatabaseError(str(e)), sys.exc_info()[2]
     return _func
 
+
 class GAEQuery(NonrelQuery):
+    """
+    A simple App Engine query: no joins, no distinct, etc.
+    """
+
     # ----------------------------------------------
     # Public API
     # ----------------------------------------------
+
     def __init__(self, compiler, fields):
         super(GAEQuery, self).__init__(compiler, fields)
         self.inequality_field = None
-        self.pk_filters = None
+        self.included_pks = None
         self.excluded_pks = ()
         self.has_negated_exact_filter = False
         self.ancestor_key = None
-        self.ordering = ()
-        self.gae_ordering = []
-        pks_only = False
-        if len(fields) == 1 and fields[0].primary_key:
-            pks_only = True
+        self.ordering = []
         self.db_table = self.query.get_meta().db_table
-        self.pks_only = pks_only
+        self.pks_only = (len(fields) == 1 and fields[0].primary_key)
         start_cursor = getattr(self.query, '_gae_start_cursor', None)
         end_cursor = getattr(self.query, '_gae_end_cursor', None)
         self.gae_query = [Query(self.db_table, keys_only=self.pks_only,
                                 cursor=start_cursor, end_cursor=end_cursor)]
 
-    # This is needed for debugging
+    # This is needed for debugging.
     def __repr__(self):
         return '<GAEQuery: %r ORDER %r>' % (self.gae_query, self.ordering)
 
@@ -98,7 +107,7 @@ class GAEQuery(NonrelQuery):
         executed = False
         if self.excluded_pks and high_mark is not None:
             high_mark += len(self.excluded_pks)
-        if self.pk_filters is not None:
+        if self.included_pks is not None:
             results = self.get_matching_pk(low_mark, high_mark)
         else:
             if high_mark is None:
@@ -130,15 +139,16 @@ class GAEQuery(NonrelQuery):
 
     @safe_call
     def count(self, limit=NOT_PROVIDED):
-        if self.pk_filters is not None:
+        if self.included_pks is not None:
             return len(self.get_matching_pk(0, limit))
         if self.excluded_pks:
             return len(list(self.fetch(0, 2000)))
         # The datastore's Count() method has a 'limit' kwarg, which has
-        # a default value (obviously).  This value can be overridden to anything
-        # you like, and importantly can be overridden to unlimited by passing
-        # a value of None.  Hence *this* method has a default value of
-        # NOT_PROVIDED, rather than a default value of None
+        # a default value (obviously).  This value can be overridden to
+        # anything you like, and importantly can be overridden to
+        # unlimited by passing a value of None.  Hence *this* method
+        # has a default value of NOT_PROVIDED, rather than a default
+        # value of None
         kw = {}
         if limit is not NOT_PROVIDED:
             kw['limit'] = limit
@@ -146,8 +156,8 @@ class GAEQuery(NonrelQuery):
 
     @safe_call
     def delete(self):
-        if self.pk_filters is not None:
-            keys = [key for key in self.pk_filters if key is not None]
+        if self.included_pks is not None:
+            keys = [key for key in self.included_pks if key is not None]
         else:
             keys = self.fetch()
         if keys:
@@ -155,25 +165,34 @@ class GAEQuery(NonrelQuery):
 
     @safe_call
     def order_by(self, ordering):
-        self.ordering = ordering
-        for order, descending in self.ordering:
-            direction = Query.DESCENDING if descending else Query.ASCENDING
-            if order == self.query.get_meta().pk.column:
-                order = '__key__'
-            self.gae_ordering.append((order, direction))
 
-    # This function is used by the default add_filters() implementation
+        # GAE doesn't have any kind of natural ordering?
+        if not isinstance(ordering, bool):
+            for field, ascending in ordering:
+                column = '__key__' if field.primary_key else field.column
+                direction = Query.ASCENDING if ascending else Query.DESCENDING
+                self.ordering.append((column, direction))
+
+
     @safe_call
-    def add_filter(self, column, lookup_type, negated, db_type, value):
+    def add_filter(self, field, lookup_type, negated, value):
+        """
+        This function is used by the default add_filters()
+        implementation.
+        """
+        if lookup_type not in OPERATORS_MAP:
+            raise DatabaseError("Lookup type %r isn't supported." %
+                                lookup_type)
+
+        # GAE does not let you store empty lists, so we can tell
+        # upfront that queriying for one will return nothing.
         if value in ([], ()):
-            self.pk_filters = []
+            self.included_pks = []
             return
 
-        # Emulated/converted lookups
-        if column == self.query.get_meta().pk.column:
-            column = '__key__'
-            db_table = self.query.get_meta().db_table
-            
+        # Optimization: batch-get by key; this is only suitable for
+        # primary keys, not for anything that uses the key type.
+        if field.primary_key and lookup_type in ('exact', 'in'):
             if lookup_type == 'exact' and isinstance(value, GAEAncestorKey):
                 if negated:
                     raise DatabaseError("You can't negate an ancestor operation.")
@@ -181,50 +200,26 @@ class GAEQuery(NonrelQuery):
                     raise DatabaseError("You can't use more than one ancestor operation.")
                 self.ancestor_key = value.key()
                 return
-            if lookup_type in ('exact', 'in'):
-                # Optimization: batch-get by key
-                if self.pk_filters is not None:
-                    raise DatabaseError("You can't apply multiple AND filters "
-                                        "on the primary key. "
-                                        "Did you mean __in=[...]?")
-                if not isinstance(value, (tuple, list)):
-                    value = [value]
-                pks = [create_key(db_table, pk) for pk in value if pk]
-                if negated:
-                    self.excluded_pks = pks
-                else:
-                    self.pk_filters = pks
-                return
+
+            if self.included_pks is not None:
+                raise DatabaseError("You can't apply multiple AND "
+                                    "filters on the primary key. "
+                                    "Did you mean __in=[...]?")
+            if not isinstance(value, (tuple, list)):
+                value = [value]
+            pks = [pk for pk in value if pk is not None]
+            if negated:
+                self.excluded_pks = pks
             else:
-                # XXX: set db_type to 'gae_key' in order to allow
-                # convert_value_for_db to recognize the value to be a Key and
-                # not a str. Otherwise the key would be converted back to a
-                # unicode (see convert_value_for_db)
-                db_type = 'gae_key'
-                key_type_error = 'Lookup values on primary keys have to be' \
-                                 'a string or an integer.'
-                if lookup_type == 'range':
-                    if isinstance(value, (list, tuple)) and not (
-                            isinstance(value[0], (basestring, int, long)) and
-                            isinstance(value[1], (basestring, int, long))):
-                        raise DatabaseError(key_type_error)
-                elif not isinstance(value, (basestring, int, long)):
-                    raise DatabaseError(key_type_error)
-                # for lookup type range we have to deal with a list
-                if lookup_type == 'range':
-                    value[0] = create_key(db_table, value[0])
-                    value[1] = create_key(db_table, value[1])
-                else:
-                    value = create_key(db_table, value)
-        if lookup_type not in OPERATORS_MAP:
-            raise DatabaseError("Lookup type %r isn't supported" % lookup_type)
+                self.included_pks = pks
+            return
 
         # We check for negation after lookup_type isnull because it
         # simplifies the code. All following lookup_type checks assume
         # that they're not negated.
         if lookup_type == 'isnull':
             if (negated and value) or not value:
-                # TODO/XXX: is everything greater than None?
+                # TODO/XXX: Is everything greater than None?
                 op = '>'
             else:
                 op = '='
@@ -232,66 +227,66 @@ class GAEQuery(NonrelQuery):
         elif negated and lookup_type == 'exact':
             if self.has_negated_exact_filter:
                 raise DatabaseError("You can't exclude more than one __exact "
-                                    "filter")
+                                    "filter.")
             self.has_negated_exact_filter = True
-            self._combine_filters(column, db_type,
-                                  (('<', value), ('>', value)))
+            self._combine_filters(field, (('<', value), ('>', value)))
             return
         elif negated:
             try:
                 op = NEGATION_MAP[lookup_type]
             except KeyError:
-                raise DatabaseError("Lookup type %r can't be negated" % lookup_type)
-            if self.inequality_field and column != self.inequality_field:
-                raise DatabaseError("Can't have inequality filters on multiple "
-                    "columns (here: %r and %r)" % (self.inequality_field, column))
-            self.inequality_field = column
+                raise DatabaseError("Lookup type %r can't be negated." %
+                                    lookup_type)
+            if self.inequality_field and field != self.inequality_field:
+                raise DatabaseError("Can't have inequality filters on "
+                                    "multiple fields (here: %r and %r)." %
+                                    (field, self.inequality_field))
+            self.inequality_field = field
         elif lookup_type == 'in':
-            # Create sub-query combinations, one for each value
+            # Create sub-query combinations, one for each value.
             if len(self.gae_query) * len(value) > 30:
                 raise DatabaseError("You can't query against more than "
-                                    "30 __in filter value combinations")
+                                    "30 __in filter value combinations.")
             op_values = [('=', v) for v in value]
-            self._combine_filters(column, db_type, op_values)
+            self._combine_filters(field, op_values)
             return
         elif lookup_type == 'startswith':
-            self._add_filter(column, '>=', db_type, value)
-            if isinstance(value, str):
-                value = value.decode('utf8')
-            if isinstance(value, Key):
-                value = list(value.to_path())
-                if isinstance(value[-1], str):
-                    value[-1] = value[-1].decode('utf8')
-                value[-1] += u'\ufffd'
-                value = Key.from_path(*value)
-            else:
-                value += u'\ufffd'
-            self._add_filter(column, '<=', db_type, value)
+            # Lookup argument was converted to [arg, arg + u'\ufffd'].
+            self._add_filter(field, '>=', value[0])
+            self._add_filter(field, '<=', value[1])
             return
         elif lookup_type in ('range', 'year'):
-            self._add_filter(column, '>=', db_type, value[0])
+            self._add_filter(field, '>=', value[0])
             op = '<=' if lookup_type == 'range' else '<'
-            self._add_filter(column, op, db_type, value[1])
+            self._add_filter(field, op, value[1])
             return
         else:
             op = OPERATORS_MAP[lookup_type]
 
-        self._add_filter(column, op, db_type, value)
+        self._add_filter(field, op, value)
 
     # ----------------------------------------------
     # Internal API
     # ----------------------------------------------
-    def _add_filter(self, column, op, db_type, value):
+
+    def _add_filter(self, field, op, value):
         for query in self.gae_query:
+
+            # GAE uses a special property name for primary key filters.
+            if field.primary_key:
+                column = '__key__'
+            else:
+                column = field.column
             key = '%s %s' % (column, op)
-            value = self.convert_value_for_db(db_type, value)
+
             if isinstance(value, Text):
-                raise DatabaseError('TextField is not indexed, by default, '
+                raise DatabaseError("TextField is not indexed, by default, "
                                     "so you can't filter on it. Please add "
-                                    'an index definition for the column %s '
-                                    'on the model %s.%s as described here:\n'
-                                    'http://www.allbuttonspressed.com/blog/django/2010/07/Managing-per-field-indexes-on-App-Engine'
-                                    % (column, self.query.model.__module__, self.query.model.__name__))
+                                    "an index definition for the field %s "
+                                    "on the model %s.%s as described here:\n"
+                                    "http://www.allbuttonspressed.com/blog/django/2010/07/Managing-per-field-indexes-on-App-Engine" %
+                                    (column, self.query.model.__module__,
+                                     self.query.model.__name__))
             if key in query:
                 existing_value = query[key]
                 if isinstance(existing_value, list):
@@ -301,7 +296,7 @@ class GAEQuery(NonrelQuery):
             else:
                 query[key] = value
 
-    def _combine_filters(self, column, db_type, op_values):
+    def _combine_filters(self, field, op_values):
         gae_query = self.gae_query
         combined = []
         for query in gae_query:
@@ -309,7 +304,7 @@ class GAEQuery(NonrelQuery):
                 self.gae_query = [Query(self.db_table,
                                         keys_only=self.pks_only)]
                 self.gae_query[0].update(query)
-                self._add_filter(column, op, db_type, value)
+                self._add_filter(field, op, value)
                 combined.append(self.gae_query[0])
         self.gae_query = combined
 
@@ -326,18 +321,17 @@ class GAEQuery(NonrelQuery):
     @safe_call
     def _build_query(self):
         for query in self.gae_query:
-            query.Order(*self.gae_ordering)
+            query.Order(*self.ordering)
             if self.ancestor_key:
                 query.Ancestor(self.ancestor_key)
         if len(self.gae_query) > 1:
-            return MultiQuery(self.gae_query, self.gae_ordering)
+            return MultiQuery(self.gae_query, self.ordering)
         return self.gae_query[0]
 
     def get_matching_pk(self, low_mark=0, high_mark=None):
-        if not self.pk_filters:
+        if not self.included_pks:
             return []
-
-        results = [result for result in Get(self.pk_filters)
+        results = [result for result in Get(self.included_pks)
                    if result is not None and
                        self.matches_filters(result)]
         if self.ordering:
@@ -356,241 +350,100 @@ class GAEQuery(NonrelQuery):
         return self._order_in_memory(left, right)
 
     def matches_filters(self, entity):
+        """
+        Checks if the GAE entity fetched from the database satisfies
+        the current query's constraints.
+        """
         item = dict(entity)
-        pk = self.query.get_meta().pk
-        value = self.convert_value_from_db(pk.db_type(connection=self.connection),
-            entity.key())
-        item[pk.column] = value
-        result = self._matches_filters(item, self.query.where)
-        return result
+        item[self.query.get_meta().pk.column] = entity.key()
+        return self._matches_filters(item, self.query.where)
+
 
 class SQLCompiler(NonrelCompiler):
     """
-    A simple App Engine query: no joins, no distinct, etc.
+    Base class for all GAE compilers.
     """
     query_class = GAEQuery
 
-    def convert_value_from_db(self, db_type, value):
-        if isinstance(value, (list, tuple, set)) and \
-                db_type.startswith(('ListField:', 'SetField:')):
-            db_sub_type = db_type.split(':', 1)[1]
-            value = [self.convert_value_from_db(db_sub_type, subvalue)
-                     for subvalue in value]
-
-        if db_type.startswith('SetField:') and value is not None:
-            value = set(value)
-
-        if db_type.startswith('DictField:') and value is not None:
-            value = pickle.loads(value)
-            if ':' in db_type:
-                db_sub_type = db_type.split(':', 1)[1]
-                value = dict((key, self.convert_value_from_db(db_sub_type, value[key]))
-                             for key in value)
-
-        # the following GAE database types are all unicode subclasses, cast them
-        # to unicode so they appear like pure unicode instances for django
-        if isinstance(value, basestring) and value and db_type.startswith('decimal'):
-            value = decimal.Decimal(value)
-        elif isinstance(value, (Category, Email, Link, PhoneNumber, PostalAddress,
-                Text, unicode)):
-            value = unicode(value)
-        elif isinstance(value, Blob):
-            value = str(value)
-        elif isinstance(value, str):
-            # always retrieve strings as unicode (it is possible that old datasets
-            # contain non unicode strings, nevertheless work with unicode ones)
-            value = value.decode('utf-8')
-        elif isinstance(value, Key):
-            if db_type == 'gae_key':
-                value = GAEKey(real_key=value)
-            else:
-                assert value.parent() is None, "Use GAEKeyField to enable parent keys!"
-                if db_type == 'integer':
-                    if value.id() is None:
-                        raise DatabaseError('Wrong type for Key. Expected integer, found'
-                            'None')
-                    else:
-                        value = value.id()
-                elif db_type == 'text':
-                    if value.name() is None:
-                        raise DatabaseError('Wrong type for Key. Expected string, found'
-                            'None')
-                    else:
-                        value = value.name()
-                else:
-                    raise DatabaseError("%s fields cannot be keys on GAE" % db_type)
-        elif db_type == 'date' and isinstance(value, datetime.datetime):
-            value = value.date()
-        elif db_type == 'time' and isinstance(value, datetime.datetime):
-            value = value.time()
-        return value
-
-    def convert_value_for_db(self, db_type, value):
-        if isinstance(value, unicode):
-            value = unicode(value)
-        elif isinstance(value, str):
-            value = str(value)
-        elif isinstance(value, (list, tuple, set)) and \
-                db_type.startswith(('ListField:', 'SetField:')):
-            db_sub_type = db_type.split(':', 1)[1]
-            value = [self.convert_value_for_db(db_sub_type, subvalue)
-                     for subvalue in value]
-        elif isinstance(value, decimal.Decimal) and db_type.startswith("decimal:"):
-            value = self.connection.ops.value_to_db_decimal(value, *eval(db_type[8:]))
-        elif isinstance(value, dict) and db_type.startswith('DictField:'):
-            if ':' in db_type:
-                db_sub_type = db_type.split(':', 1)[1]
-                value = dict([(key, self.convert_value_for_db(db_sub_type, value[key]))
-                              for key in value])
-            value = Blob(pickle.dumps(value))
-
-        if db_type == 'gae_key':
-            if isinstance(value, GAEKey) and value.has_real_key():
-                return value.real_key()
-            else:
-                return value
-        elif db_type == 'longtext':
-            # long text fields cannot be indexed on GAE so use GAE's database
-            # type Text
-            if value is not None:
-                value = Text(value.decode('utf-8') if isinstance(value, str) else value)
-        elif db_type == 'text':
-            value = value.decode('utf-8') if isinstance(value, str) else value
-        elif db_type == 'blob':
-            if value is not None:
-                value = Blob(value)
-        elif type(value) is str:
-            # always store unicode strings
-            value = value.decode('utf-8')
-        elif db_type == 'date' or db_type == 'time' or db_type == 'datetime':
-            # here we have to check the db_type because GAE always stores datetimes
-            value = to_datetime(value)
-        return value
 
 class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
+
     @safe_call
     def insert(self, data, return_id=False):
-        gae_data = {}
         opts = self.query.get_meta()
         unindexed_fields = get_model_indexes(self.query.model)['unindexed']
-        unindexed_cols = [opts.get_field(name).column
-                          for name in unindexed_fields]
-        kwds = {'unindexed_properties': unindexed_cols}
-        for column, value in data.items():
-            if column == opts.pk.column:
-                if isinstance(value, GAEKey):
-                    if value.parent_key() and value.parent_key().has_real_key():
-                        kwds['parent'] = value.parent_key().real_key()
-                    if isinstance(value.id_or_name(), basestring):
-                        kwds['name'] = value.id_or_name()
-                    elif value.id_or_name() is not None:
-                        kwds['id'] = value.id_or_name()
-                elif isinstance(value, Key):
-                    kwds['parent'] = value.parent()
-                    if value.name():
-                        kwds['name'] = value.name()
-                    elif value.id():
-                        kwds['id'] = value.id()
-                elif isinstance(value, basestring):
-                    kwds['name'] = value
-                else:
-                    kwds['id'] = value
+        kwds = {'unindexed_properties': []}
+        properties = {}
+        for field, value in data.iteritems():
+
+            # The value will already be a db.Key, but the Entity
+            # constructor takes a name or id of the key, and will
+            # automatically create a new key if neither is given.
+            if field.primary_key:
+                if value is not None:
+                    kwds['id'] = value.id()
+                    kwds['name'] = value.name()
+
+            # GAE does not store empty lists (and even does not allow
+            # passing empty lists to Entity.update) so skip them.
             elif isinstance(value, (tuple, list)) and not len(value):
-                # gae does not store empty lists (and even does not allow passing empty
-                # lists to Entity.update) so skip them
                 continue
+
+            # Use column names as property names.
             else:
-                gae_data[column] = value
+                properties[field.column] = value
+
+            if field in unindexed_fields:
+                kwds['unindexed_properties'].append(field.column)
 
         entity = Entity(opts.db_table, **kwds)
-        entity.update(gae_data)
-        key = Put(entity)
+        entity.update(properties)
+        return Put(entity)
 
-        if not isinstance(opts.pk, GAEKeyField):
-            key = key.id_or_name()
-        
-        return key
 
 class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
+
     def execute_sql(self, result_type=MULTI):
-        # modify query to fetch pks only and then execute the query
-        # to get all pks
-        pk = self.query.model._meta.pk.name
-        self.query.add_immediate_loading([pk])
+        # Modify query to fetch pks only and then execute the query
+        # to get all pks.
+        pk_field = self.query.model._meta.pk
+        self.query.add_immediate_loading([pk_field.name])
         pks = [row for row in self.results_iter()]
-        self.update_entities(pks)
+        self.update_entities(pks, pk_field)
         return len(pks)
 
-    def update_entities(self, pks):
+    def update_entities(self, pks, pk_field):
         for pk in pks:
-            self.update_entity(pk[0])
+            self.update_entity(pk[0], pk_field)
 
     @commit_locked
-    def update_entity(self, pk):
+    def update_entity(self, pk, pk_field):
         gae_query = self.build_query()
-        key = create_key(self.query.get_meta().db_table, pk)
-        entity = Get(key)
+        entity = Get(self.ops.value_for_db(pk, pk_field))
+
         if not gae_query.matches_filters(entity):
             return
 
-        qn = self.quote_name_unless_alias
-        update_dict = {}
-        for field, o, value in self.query.values:
+        for field, _, value in self.query.values:
             if hasattr(value, 'prepare_database_save'):
                 value = value.prepare_database_save(field)
             else:
-                value = field.get_db_prep_save(value, connection=self.connection)
+                value = field.get_db_prep_save(value,
+                                               connection=self.connection)
 
-            if hasattr(value, "evaluate"):
+            if hasattr(value, 'evaluate'):
                 assert not value.negated
                 assert not value.subtree_parents
                 value = ExpressionEvaluator(value, self.query, entity,
-                                                allow_joins=False)
+                                            allow_joins=False)
 
             if hasattr(value, 'as_sql'):
-                # evaluate expression and return the new value
-                val = value.as_sql(qn, self.connection)
-                update_dict[field] = val
-            else:
-                update_dict[field] = value
+                value = value.as_sql(lambda n: n, self.connection)
 
-        for field, value in update_dict.iteritems():
-            db_type = field.db_type(connection=self.connection)
-            entity[qn(field.column)] = self.convert_value_for_db(db_type, value)
+            entity[field.column] = self.ops.value_for_db(value, field)
 
-        key = Put(entity)
+        Put(entity)
+
 
 class SQLDeleteCompiler(NonrelDeleteCompiler, SQLCompiler):
     pass
-
-def to_datetime(value):
-    """Convert a time or date to a datetime for datastore storage.
-
-    Args:
-    value: A datetime.time, datetime.date or string object.
-
-    Returns:
-    A datetime object with date set to 1970-01-01 if value is a datetime.time
-    A datetime object with date set to value.year - value.month - value.day and
-    time set to 0:00 if value is a datetime.date
-    """
-
-    if value is None:
-        return value
-    elif isinstance(value, datetime.datetime):
-        return value
-    elif isinstance(value, datetime.date):
-        return datetime.datetime(value.year, value.month, value.day)
-    elif isinstance(value, datetime.time):
-        return datetime.datetime(1970, 1, 1, value.hour, value.minute,
-            value.second, value.microsecond)
-
-def create_key(db_table, value):
-    if isinstance(value, GAEKey):
-        parent = None
-        if value.parent_key() is not None:
-            parent = value.parent_key().real_key()
-        return Key.from_path(db_table, value.id_or_name(), parent=parent)
-    if isinstance(value, (int, long)) and value < 1:
-        return None
-    return Key.from_path(db_table, value)

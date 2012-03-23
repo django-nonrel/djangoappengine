@@ -214,7 +214,7 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'djangoappengine', u'Django App Engine Documentation',
-     [u'AllButtonsPressed, Potato London, Wilfred Hughes'], 1)
+     [u'AllButtonsPressed, Potato London, Wilfred Hughes'], 1),
 ]
 
 # If true, show URL addresses after external links.
@@ -228,7 +228,8 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'DjangoAppEngine', u'Django App Engine Documentation',
-   u'AllButtonsPressed, Potato London, Wilfred Hughes', 'DjangoAppEngine', 'One line description of project.',
+   u'AllButtonsPressed, Potato London, Wilfred Hughes', 'DjangoAppEngine',
+   'One line description of project.',
    'Miscellaneous'),
 ]
 
