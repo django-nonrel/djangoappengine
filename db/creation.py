@@ -32,6 +32,13 @@ class DatabaseCreation(NonrelDatabaseCreation):
         field is to be indexed, and the "text" db_type (db.Text) if
         it's registered as unindexed.
         """
+        from djangoappengine.fields import DbKeyField
+
+        # DBKeyField reads/stores db.Key objects directly
+        # so its treated as a special case
+        if isinstance(field, DbKeyField):
+            return field.db_type(connection=self.connection)
+
         if self.connection.settings_dict.get('STORE_RELATIONS_AS_DB_KEYS'):
             if field.primary_key or field.rel is not None:
                 return 'key'
