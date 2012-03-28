@@ -71,6 +71,8 @@ def setup_env():
             else:
                 if name == 'webapp2':
                     extra_paths.append(root)
+                elif name == 'webob_0_9':
+                    extra_paths.append(root)
         sys.path = extra_paths + sys.path
         from google.appengine.api import apiproxy_stub_map
 
