@@ -23,7 +23,7 @@ class Command(BaseCommand):
     def handle(self, *fixture_labels, **options):
         from django.core.management import call_command
         from django import db
-        from ...db.base import get_datastore_paths
+        from ...db.base import get_datastore_paths, DatabaseWrapper
         from ...db.stubs import stub_manager
 
         verbosity = int(options.get('verbosity'))
@@ -32,20 +32,20 @@ class Command(BaseCommand):
 
         db_name = None
 
-        # switch default database to test
-        for name, settings in db.connections.databases.items():
-            if settings['ENGINE'] == 'djangoappengine.db':
-                db_name = name
+        for name in db.connections:
+            conn = db.connections[name]
+            if isinstance(conn, DatabaseWrapper):
+                settings = conn.settings_dict
                 for key, path in get_datastore_paths(settings).items():
                     settings[key] = "%s-testdb" % path
+                conn.flush()
+
+                # reset stub manager
+                stub_manager.active_stubs = None
+                stub_manager.setup_local_stubs(conn)
+
+                db_name = name
                 break
-
-        # reset stub manager
-        stub_manager.active_stubs = None
-
-        # run flush on that db
-        conn = db.connections[db_name]
-        conn.flush()
 
         # Temporarily change consistency policy to force apply loaded data
         datastore = apiproxy_stub_map.apiproxy.GetStub('datastore_v3')
@@ -56,6 +56,7 @@ class Command(BaseCommand):
         # Import the fixture data into the test database.
         call_command('loaddata', *fixture_labels, **{'verbosity': verbosity})
 
+        # reset original policy
         datastore.SetConsistencyPolicy(orig_consistency_policy)
 
         # Run the development server. Turn off auto-reloading because it causes
@@ -63,4 +64,3 @@ class Command(BaseCommand):
         # multiple times.
         shutdown_message = '\nServer stopped.\nNote that the test database, %r, has not been deleted. You can explore it on your own.' % db_name
         call_command('runserver', addrport=addrport, shutdown_message=shutdown_message, use_reloader=False, use_ipv6=options['use_ipv6'])
-
