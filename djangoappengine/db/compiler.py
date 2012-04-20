@@ -12,6 +12,7 @@ from google.appengine.api.datastore import Entity, Query, MultiQuery, \
     Put, Get, Delete
 from google.appengine.api.datastore_errors import Error as GAEError
 from google.appengine.api.datastore_types import Key, Text
+from google.appengine.datastore.datastore_query import Cursor
 
 from djangotoolbox.db.basecompiler import (
     NonrelQuery,
@@ -352,6 +353,21 @@ class SQLCompiler(NonrelCompiler):
     """
     query_class = GAEQuery
 
+    def as_sql(self, *args, **kwargs):
+        sql, params = super(SQLCompiler, self).as_sql(*args, **kwargs)
+
+        start_cursor = getattr(self.query, '_gae_start_cursor', None)
+        end_cursor = getattr(self.query, '_gae_end_cursor', None)
+
+        start_cursor_str = ''
+        end_cursor_str = ''
+
+        if start_cursor:
+            start_cursor_str = Cursor.to_websafe_string(start_cursor)
+        if end_cursor:
+            end_cursor_str = Cursor.to_websafe_string(end_cursor)
+
+        return '%s --cursor:%s,%s' % (sql, start_cursor_str, end_cursor_str), params
 
 class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
 
