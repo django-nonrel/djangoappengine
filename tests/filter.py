@@ -50,6 +50,12 @@ class FilterTest(TestCase):
                 .filter(email__startswith='r').order_by('email')],
             ['rasengan@naruto.com', 'rinnengan@sage.de'])
 
+    def test_pk_and_startswith(self):
+        self.assertEquals(
+            [entity.email for entity in FieldsWithOptionsModel.objects
+                .filter(text__startswith='Ha', pk='rinnengan@sage.de').order_by('text')],
+            ['rinnengan@sage.de'])
+
     def test_gt(self):
         # Test gt on float.
         self.assertEquals(
