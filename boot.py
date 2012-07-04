@@ -7,7 +7,9 @@ PROJECT_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 DATA_ROOT = os.path.join(PROJECT_DIR, '.gaedata')
 
 # Overrides for os.environ.
-env_ext = {'DJANGO_SETTINGS_MODULE': 'settings'}
+env_ext = {}
+if 'DJANGO_SETTINGS_MODULE' not in os.environ:
+    env_ext['DJANGO_SETTINGS_MODULE'] = 'settings'
 
 
 def setup_env():
