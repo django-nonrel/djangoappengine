@@ -65,28 +65,12 @@ def setup_env():
                              "environment and called google_appengine.\n")
             sys.exit(1)
 
-        # Add the SDK and the libraries within it to the system path.
-        extra_paths = [sdk_path]
-        lib = os.path.join(sdk_path, 'lib')
-        # Automatically add all packages in the SDK's lib folder:
-        for name in os.listdir(lib):
-            root = os.path.join(lib, name)
-            subdir = name
-            # Package can be under 'lib/<pkg>/<pkg>/' or
-            # 'lib/<pkg>/lib/<pkg>/'.
-            detect = (os.path.join(root, subdir),
-                      os.path.join(root, 'lib', subdir))
-            for path in detect:
-                if os.path.isdir(path):
-                    extra_paths.append(os.path.dirname(path))
-                    break
-            else:
-                if name == 'webapp2':
-                    extra_paths.append(root)
-                elif name == 'webob_0_9':
-                    extra_paths.append(root)
-        sys.path = extra_paths + sys.path
-        from google.appengine.api import apiproxy_stub_map
+        #First add the found SDK to the path
+        sys.path = [ sdk_path ] + sys.path
+
+        #Then call fix_sys_path from the SDK
+        from dev_appserver import fix_sys_path
+        fix_sys_path()
 
     setup_project()
     from .utils import have_appserver
