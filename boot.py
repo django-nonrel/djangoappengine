@@ -35,7 +35,7 @@ def setup_env():
         # Not on the system path. Build a list of alternative paths
         # where it may be. First look within the project for a local
         # copy, then look for where the Mac OS SDK installs it.
-        paths = [os.path.join(PROJECT_DIR, '.google_appengine'),
+        paths = [os.path.join(PROJECT_DIR, 'google_appengine'),
                  os.environ.get('APP_ENGINE_SDK'),
                  '/usr/local/google_appengine',
                  '/Applications/GoogleAppEngineLauncher.app/Contents/Resources/GoogleAppEngine-default.bundle/Contents/Resources/google_appengine']
