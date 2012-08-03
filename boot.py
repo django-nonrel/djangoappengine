@@ -2,8 +2,18 @@ import logging
 import os
 import sys
 
+def find_project_dir():
+    """
+        Go through the path, and look for manage.py
+    """
+    for path in sys.path:
+        abs_path = os.path.join(os.path.abspath(path), "manage.py")
+        if os.path.exists(abs_path):
+            return os.path.dirname(abs_path)
 
-PROJECT_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    raise RuntimeError("Unable to locate manage.py on sys.path")
+
+PROJECT_DIR = find_project_dir()
 DATA_ROOT = os.path.join(PROJECT_DIR, '.gaedata')
 
 # Overrides for os.environ.
