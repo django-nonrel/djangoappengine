@@ -356,36 +356,40 @@ class SQLCompiler(NonrelCompiler):
 class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
 
     @safe_call
-    def insert(self, data, return_id=False):
+    def insert(self, data_list, return_id=False):
         opts = self.query.get_meta()
         unindexed_fields = get_model_indexes(self.query.model)['unindexed']
-        kwds = {'unindexed_properties': []}
-        properties = {}
-        for field, value in data.iteritems():
+        unindexed_cols = [opts.get_field(name).column
+                          for name in unindexed_fields]
 
-            # The value will already be a db.Key, but the Entity
-            # constructor takes a name or id of the key, and will
-            # automatically create a new key if neither is given.
-            if field.primary_key:
-                if value is not None:
-                    kwds['id'] = value.id()
-                    kwds['name'] = value.name()
+        entity_list = []
+        for data in data_list:
+            properties = {}
+            kwds = {'unindexed_properties': unindexed_cols}
+            for column, value in data.items():
+                # The value will already be a db.Key, but the Entity
+                # constructor takes a name or id of the key, and will
+                # automatically create a new key if neither is given.
+                if column == opts.pk.column:
+                    if value is not None:
+                        kwds['id'] = value.id()
+                        kwds['name'] = value.name()
 
-            # GAE does not store empty lists (and even does not allow
-            # passing empty lists to Entity.update) so skip them.
-            elif isinstance(value, (tuple, list)) and not len(value):
-                continue
+                # GAE does not store empty lists (and even does not allow
+                # passing empty lists to Entity.update) so skip them.
+                elif isinstance(value, (tuple, list)) and not len(value):
+                    continue
 
-            # Use column names as property names.
-            else:
-                properties[field.column] = value
+                # Use column names as property names.
+                else:
+                    properties[column] = value
 
-            if field in unindexed_fields:
-                kwds['unindexed_properties'].append(field.column)
+            entity = Entity(opts.db_table, **kwds)
+            entity.update(properties)
+            entity_list.append(entity)
 
-        entity = Entity(opts.db_table, **kwds)
-        entity.update(properties)
-        return Put(entity)
+        keys = Put(entity_list)
+        return keys[0] if isinstance(keys, list) else keys
 
 
 class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
