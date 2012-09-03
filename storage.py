@@ -62,7 +62,8 @@ class BlobstoreStorage(Storage):
             data = content.blobstore_info
         elif isinstance(content, File):
             guessed_type = mimetypes.guess_type(name)[0]
-            file_name = files.blobstore.create(mime_type=guessed_type or 'application/octet-stream')
+            file_name = files.blobstore.create(mime_type=guessed_type or 'application/octet-stream',
+                                               _blobinfo_uploaded_filename=name)
 
             with files.open(file_name, 'a') as f:
                 for chunk in content.chunks():
@@ -73,8 +74,7 @@ class BlobstoreStorage(Storage):
             data = files.blobstore.get_blob_key(file_name)
         else:
             raise ValueError("The App Engine storage backend only supports "
-                             "BlobstoreFile instances or File instances "
-                             "whose file attribute is a BlobstoreFile.")
+                             "BlobstoreFile instances or File instances.")
 
         if isinstance(data, (BlobInfo, BlobKey)):
             # We change the file name to the BlobKey's str() value.
