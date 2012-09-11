@@ -23,7 +23,7 @@ class FieldDBConversionTest(TestCase):
             comma_seperated_integer='5,4,3,2',
             ip_address='194.167.1.1', slug='you slugy slut :)',
             url='http://www.scholardocs.com', long_text=1000 * 'A',
-            indexed_text='hello', xml=2000 * 'B',
+            indexed_text='hello',
             integer=-400, small_integer=-4, positive_integer=400,
             positive_small_integer=4)
         entity.save()
@@ -36,7 +36,7 @@ class FieldDBConversionTest(TestCase):
             entity.pk))
         opts = FieldsWithoutOptionsModel._meta
         for name, types in [('long_text', Text),
-                ('indexed_text', unicode), ('xml', Text),
+                ('indexed_text', unicode),
                 ('text', unicode), ('ip_address', unicode), ('slug', unicode),
                 ('email', unicode), ('comma_seperated_integer', unicode),
                 ('url', unicode), ('time', datetime.datetime),
@@ -56,7 +56,7 @@ class FieldDBConversionTest(TestCase):
         model = FieldsWithoutOptionsModel.objects.get()
         for name, types in [
                 ('long_text', unicode),
-                ('indexed_text', unicode), ('xml', unicode),
+                ('indexed_text', unicode),
                 ('text', unicode), ('ip_address', unicode),
                 ('slug', unicode),
                 ('email', unicode), ('comma_seperated_integer', unicode),
