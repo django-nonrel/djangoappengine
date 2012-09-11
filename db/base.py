@@ -339,7 +339,7 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
                 exit()
         elif stub_manager.active_stubs == 'test':
             stub_manager.deactivate_test_stubs()
-            stub_manager.activate_test_stubs()
+            stub_manager.activate_test_stubs(self)
         else:
             destroy_datastore(get_datastore_paths(self.settings_dict))
             stub_manager.setup_local_stubs(self)
