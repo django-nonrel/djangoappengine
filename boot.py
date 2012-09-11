@@ -65,10 +65,10 @@ def setup_env():
                              "environment and called google_appengine.\n")
             sys.exit(1)
 
-        #First add the found SDK to the path
+        # First add the found SDK to the path
         sys.path = [ sdk_path ] + sys.path
 
-        #Then call fix_sys_path from the SDK
+        # Then call fix_sys_path from the SDK
         from dev_appserver import fix_sys_path
         fix_sys_path()
 
