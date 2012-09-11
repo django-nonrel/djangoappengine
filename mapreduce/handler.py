@@ -10,8 +10,10 @@ for app in settings.INSTALLED_APPS:
         import_module('%s.models' % app)
     except ImportError:
         pass
-
-from google.appengine.ext.mapreduce.main import APP as application, main
+try:
+    from mapreduce.main import APP as application, main
+except ImportError:
+    from google.appengine.ext.mapreduce.main import APP as application, main
 
 
 if __name__ == '__main__':
