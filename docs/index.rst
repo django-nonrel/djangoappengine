@@ -5,29 +5,18 @@ Djangoappengine contains App Engine backends for Django-nonrel, e.g. the databas
 
 Take a look at the documentation below and subscribe to our `mailing list`_ for the latest updates.
 
-.. raw:: html
-
-   <ul class="project-links">
-      <li><a href="#documentation">Documentation</a></li>
-      <li><a href="http://bitbucket.org/wkornewald/djangoappengine/src">Source</a></li>
-      <li><a href="http://bitbucket.org/wkornewald/djangoappengine/get/tip.zip">Download</a></li>
-      <li><a href="http://groups.google.com/group/django-non-relational">Discussion group</a></li>
-      <li><a href="/">Blog</a></li>
-   </ul>
-
-
 Installation
 ---------------------------------------
 Make sure you've installed the `App Engine SDK`_. On Windows simply use the default installation path. On Linux you can put it in /usr/local/google_appengine. On MacOS it should work if you put it in your Applications folder. Alternatively, on all systems you can add the google_appengine folder to your PATH (not PYTHONPATH) environment variable.
 
 Download the following zip files:
 
-* `django-nonrel <http://bitbucket.org/wkornewald/django-nonrel/get/tip.zip>`__ (or `clone it <https://bitbucket.org/wkornewald/django-nonrel>`__)
-* `djangoappengine <http://bitbucket.org/wkornewald/djangoappengine/get/tip.zip>`__ (or `clone it <https://bitbucket.org/wkornewald/djangoappengine>`__)
-* `djangotoolbox <http://bitbucket.org/wkornewald/djangotoolbox/get/tip.zip>`__ (or `clone it <https://bitbucket.org/wkornewald/djangotoolbox>`__)
+* `django-nonrel <https://github.com/django-nonrel/django-nonrel/zipball/develop>`__ (or `clone it <https://github.com/django-nonrel/django-nonrel.git>`__)
+* `djangoappengine <https://github.com/django-nonrel/djangoappengine/zipball/develop>`__ (or `clone it <https://github.com/django-nonrel/djangoappengine.git>`__)
+* `djangotoolbox <https://github.com/django-nonrel/djangotoolbox/zipball/develop>`__ (or `clone it <https://github.com/django-nonrel/djangotoolbox.git>`__)
 * `django-autoload <http://bitbucket.org/twanschik/django-autoload/get/tip.zip>`__ (or `clone it <https://bitbucket.org/twanschik/django-autoload>`__)
-* `django-dbindexer <http://bitbucket.org/wkornewald/django-dbindexer/get/tip.zip>`__ (or `clone it <https://bitbucket.org/wkornewald/django-dbindexer>`__)
-* `django-testapp <http://bitbucket.org/wkornewald/django-testapp/get/tip.zip>`__ (or `clone it <https://bitbucket.org/wkornewald/django-testapp>`__)
+* `django-dbindexer <https://github.com/django-nonrel/django-dbindexer/zipball/develop>`__ (or `clone it <https://github.com/django-nonrel/django-dbindexer.git>`__)
+* `django-testapp <https://github.com/django-nonrel/django-testapp/zipball/develop>`__ (or `clone it <https://github.com/django-nonrel/django-testapp.git>`__)
 
 Unzip everything.
 
@@ -39,7 +28,7 @@ Copy the following folders into your project (e.g., django-testapp):
 * djangotoolbox/djangotoolbox => ``<project>``/djangotoolbox
 * django-autoload/autoload => ``<project>``/autoload
 * django-dbindexer/dbindexer => ``<project>``/dbindexer
-* djangoappengine => ``<project>``/djangoappengine
+* djangoappengine/djangoappengine => ``<project>``/djangoappengine
 
 That's it. Your project structure should look like this:
 
