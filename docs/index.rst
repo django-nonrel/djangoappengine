@@ -1,9 +1,9 @@
-djangoappengine - Django App Engine backends (DB, email, etc.)
-===============================================================
+djangoappengine - Django backends (DB, email, etc.) for App Engine
+==================================================================
 
-Djangoappengine contains all App Engine backends for Django-nonrel, e.g. the database and email backends. In addition we provide a testapp_ which contains minimal settings for running Django-nonrel on App Engine. Use it as a starting point if you want to use App Engine as your database for Django-nonrel. We've also published some details in the `Django on App Engine`_ blog post.
+Djangoappengine contains App Engine backends for Django-nonrel, e.g. the database and email backends. In addition we provide a testapp_ which contains minimal settings for running Django-nonrel on App Engine. Use it as a starting point if you want to use App Engine as your database for Django-nonrel.
 
-Take a look at the documentation below and subscribe_ to our `Django-nonrel blog`_ for the latest updates.
+Take a look at the documentation below and subscribe to our `mailing list`_ for the latest updates.
 
 .. raw:: html
 
@@ -14,10 +14,6 @@ Take a look at the documentation below and subscribe_ to our `Django-nonrel blog
       <li><a href="http://groups.google.com/group/django-non-relational">Discussion group</a></li>
       <li><a href="/">Blog</a></li>
    </ul>
-
-
-
-
 
 
 Installation
@@ -47,11 +43,11 @@ Copy the following folders into your project (e.g., django-testapp):
 
 That's it. Your project structure should look like this:
 
-* <project>/django
-* <project>/djangotoolbox
 * <project>/autoload
 * <project>/dbindexer
+* <project>/django
 * <project>/djangoappengine
+* <project>/djangotoolbox
 
 Alternatively, you can of course clone the respective repositories and create symbolic links instead of copying the folders to your project. That might be easier if you have a lot of projects and don't want to update each one manually.
 
@@ -71,7 +67,7 @@ Note that you can only use ``manage.py remote`` if your app is deployed and if y
 Supported and unsupported  features
 -----------------------------------------------------------
 Field types
-__________________________
+___________
 All Django field types are fully supported except for the following:
 
 * ``ImageField``
@@ -109,7 +105,7 @@ You can use the following field lookup types on all Fields except on ``TextField
 * ``__gte`` greater than or equal to
 * ``__in`` (up to 500 values on primary keys and 30 on other fields)
 * ``__range`` inclusive on both boundaries
-* ``__startswith`` needs a composite index if combined with other filters 
+* ``__startswith`` needs a composite index if combined with other filters
 * ``__year``
 * ``__isnull`` requires django-dbindexer_ to work correctly on ``ForeignKey`` (you don't have to define any indexes for this to work)
 
@@ -238,18 +234,13 @@ Contribute
 ------------------------------------------------------
 If you want to help with implementing a missing feature or improving something please fork the source_ and send a pull request via BitBucket or a patch to the `discussion group`_.
 
-.. _djangotoolbox: http://www.allbuttonspressed.com/projects/djangotoolbox
-.. _`Django-nonrel blog`: /blog/django
-.. _testapp: http://bitbucket.org/wkornewald/django-testapp
-.. _django-nonrel: http://bitbucket.org/wkornewald/django-nonrel/wiki/Home
-.. _djangoappengine: http://bitbucket.org/wkornewald/djangoappengine
-.. _source: djangoappengine_
-.. _django-testapp: http://bitbucket.org/wkornewald/django-testapp
-.. _subscribe: http://feeds.feedburner.com/AllButtonsPressed
-.. _Django on App Engine: /blog/django/2010/01/Native-Django-on-App-Engine
-.. _Link Shell Extension: http://schinagl.priv.at/nt/hardlinkshellext/hardlinkshellext.html
-.. _Mercurial: http://mercurial.selenic.com/
-.. _App Engine SDK: http://code.google.com/appengine/downloads.html
+.. _djangotoolbox: https://github.com/django-nonrel/djangotoolbox
+.. _testapp: https://github.com/django-nonrel/django-testapp
+.. _django-testapp: https://github.com/django-nonrel/django-testapp
+.. _django-nonrel: http://django-nonrel.github.com/
+.. _djangoappengine: https://github.com/django-nonrel/djangoappengine
+.. _source: https://github.com/django-nonrel/djangoappengine
+.. _App Engine SDK: https://developers.google.com/appengine/downloads
 .. _abstract base classes: http://docs.djangoproject.com/en/dev/topics/db/models/#abstract-base-classes
 .. _multi-table inheritance: http://docs.djangoproject.com/en/dev/topics/db/models/#multi-table-inheritance
 .. _multiple inheritance: http://docs.djangoproject.com/en/dev/topics/db/models/#multiple-inheritance
@@ -257,5 +248,5 @@ If you want to help with implementing a missing feature or improving something p
 .. _django-dbindexer: http://www.allbuttonspressed.com/projects/django-dbindexer
 .. _Google OpenID Sample Store: https://sites.google.com/site/oauthgoog/Home/openidsamplesite
 .. _django-filetransfers: http://www.allbuttonspressed.com/projects/django-filetransfers
-.. _Blobstore: http://code.google.com/appengine/docs/python/blobstore/
+.. _Blobstore: https://developers.google.com/appengine/docs/python/blobstore/overview
 .. _discussion group: http://groups.google.com/group/django-non-relational
