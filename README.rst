@@ -1,7 +1,7 @@
 Djangoappengine, a Django database backend for App Engine
 =========================================================
 
-Documentation at http://readthedocs.org/docs/django-nonrel/en/latest/
+Documentation at http://djangoappengine.readthedocs.org/
 
 Djangoappengine allows you to use App Engine's datastore with
 Django. It provides the necessary plumbing to query the datastore, and
