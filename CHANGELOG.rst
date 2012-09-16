@@ -4,7 +4,7 @@ Changelog
 Version 0.X
 -----------
 
-* Add write support to ``BlobstoreStorage``
+* Added write support to ``BlobstoreStorage``
 * Added high replication support to test framework. Use ``HIGH_REPLICATION``
   to your database options to enable.
 * Added ``testserver`` command to start dev_appserver and install
