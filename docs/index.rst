@@ -234,7 +234,7 @@ If you want to help with implementing a missing feature or improving something p
 .. _multi-table inheritance: http://docs.djangoproject.com/en/dev/topics/db/models/#multi-table-inheritance
 .. _multiple inheritance: http://docs.djangoproject.com/en/dev/topics/db/models/#multiple-inheritance
 .. _Managing per-field indexes on App Engine: http://www.allbuttonspressed.com/blog/django/2010/07/Managing-per-field-indexes-on-App-Engine
-.. _django-dbindexer: http://www.allbuttonspressed.com/projects/django-dbindexer
+.. _django-dbindexer: https://github.com/django-nonrel/django-dbindexer
 .. _Google OpenID Sample Store: https://sites.google.com/site/oauthgoog/Home/openidsamplesite
 .. _django-filetransfers: http://www.allbuttonspressed.com/projects/django-filetransfers
 .. _Blobstore: https://developers.google.com/appengine/docs/python/blobstore/overview
