@@ -56,6 +56,10 @@ class Command(BaseRunserverCommand):
             help="The path to use for the local datastore data file. " \
                  "The server creates this file if it does not exist."),
         make_option(
+            '--blobstore_path',
+            help="The path to use for the local blob data directory. " \
+                 "The server creates this directory if it does not exist."),
+        make_option(
             '--history_path',
             help="The path to use for the local datastore history file. " \
                  "The server uses the query history file to generate " \
@@ -174,7 +178,7 @@ class Command(BaseRunserverCommand):
                 args.append('--%s' % opt)
 
         str_options = [
-            'datastore_path', 'history_path', 'login_url', 'smtp_host',
+            'datastore_path', 'blobstore_path', 'history_path', 'login_url', 'smtp_host',
             'smtp_port', 'smtp_user', 'smtp_password', ]
         for opt in str_options:
             if options.get(opt, None) != None:
