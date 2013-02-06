@@ -120,6 +120,11 @@ class GAEQuery(NonrelQuery):
             else:
                 results = ()
 
+        if executed and not isinstance(query, MultiQuery):
+            def get_cursor():
+                return query.GetCompiledCursor()
+            self.query._gae_cursor = get_cursor
+
         for entity in results:
             if isinstance(entity, Key):
                 key = entity
@@ -128,12 +133,6 @@ class GAEQuery(NonrelQuery):
             if key in self.excluded_pks:
                 continue
             yield self._make_entity(entity)
-
-        if executed and not isinstance(query, MultiQuery):
-            try:
-                self.query._gae_cursor = query.GetCompiledCursor()
-            except:
-                pass
 
     @safe_call
     def count(self, limit=NOT_PROVIDED):
