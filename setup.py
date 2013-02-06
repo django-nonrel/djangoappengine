@@ -11,14 +11,14 @@ except:
 
 setup(name='djangoappengine',
       version='1.0',
-      package_dir={'djangoappengine': '.'},
-      packages=['djangoappengine'] + ['djangoappengine.' + name
-                                      for name in find_packages()],
+      packages=find_packages(exclude=['docs']),
+      install_requires=['djangotoolbox'],
       author='Waldemar Kornewald',
       author_email='wkornewald@gmail.com',
-      url='http://www.allbuttonspressed.com/projects/djangoappengine',
+      url='https://github.com/django-nonrel/djangoappengine',
       description=DESCRIPTION,
       long_description=LONG_DESCRIPTION,
+      license='3-clause BSD',
       platforms=['any'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
