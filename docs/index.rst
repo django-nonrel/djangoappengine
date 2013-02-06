@@ -16,6 +16,7 @@ Contents
    services
    management
    admin
+   mapreduce
 
 
 Contribute
