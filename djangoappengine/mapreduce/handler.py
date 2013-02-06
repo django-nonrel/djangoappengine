@@ -10,6 +10,7 @@ for app in settings.INSTALLED_APPS:
         import_module('%s.models' % app)
     except ImportError:
         pass
+
 try:
     from mapreduce.main import APP as application, main
 except ImportError:
