@@ -92,6 +92,7 @@ class GAEQuery(NonrelQuery):
         self.pks_only = (len(fields) == 1 and fields[0].primary_key)
         start_cursor = getattr(self.query, '_gae_start_cursor', None)
         end_cursor = getattr(self.query, '_gae_end_cursor', None)
+        self.config = getattr(self.query, '_gae_config', {})
         self.gae_query = [Query(self.db_table, keys_only=self.pks_only,
                                 cursor=start_cursor, end_cursor=end_cursor)]
 
@@ -110,6 +111,8 @@ class GAEQuery(NonrelQuery):
         else:
             if high_mark is None:
                 kw = {}
+                if self.config:
+                    kw.update(self.config)
                 if low_mark:
                     kw['offset'] = low_mark
                 results = query.Run(**kw)
@@ -318,7 +321,14 @@ class GAEQuery(NonrelQuery):
     def get_matching_pk(self, low_mark=0, high_mark=None):
         if not self.included_pks:
             return []
-        results = [result for result in Get(self.included_pks)
+
+        config = self.config.copy()
+
+        # batch_size is not allowed for Gets
+        if 'batch_size' in config:
+            del config['batch_size']
+
+        results = [result for result in Get(self.included_pks, **config)
                    if result is not None and
                        self.matches_filters(result)]
         if self.ordering:
