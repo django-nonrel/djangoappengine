@@ -40,7 +40,7 @@ def set_cursor(queryset, start=None, end=None):
     return queryset
 
 
-def commit_locked(func_or_using=None, retries=None, xg=False):
+def commit_locked(func_or_using=None, retries=None, xg=False, propagation=None):
     """
     Decorator that locks rows on DB reads.
     """
@@ -55,9 +55,12 @@ def commit_locked(func_or_using=None, retries=None, xg=False):
 
             if retries:
                 option_dict['retries'] = retries
-            
+
             if xg:
                 option_dict['xg'] = True
+
+            if propagation:
+                option_dict['propagation'] = propagation
 
             options = TransactionOptions(**option_dict)
             return RunInTransactionOptions(options, func, *args, **kw)
