@@ -109,16 +109,20 @@ class GAEQuery(NonrelQuery):
         if self.included_pks is not None:
             results = self.get_matching_pk(low_mark, high_mark)
         else:
-            if high_mark is None:
+            if high_mark is None or high_mark > low_mark:
                 kw = {}
                 if self.config:
                     kw.update(self.config)
+
                 if low_mark:
                     kw['offset'] = low_mark
+                else:
+                    low_mark = 0
+
+                if high_mark:
+                    kw['limit'] = high_mark - low_mark
+
                 results = query.Run(**kw)
-                executed = True
-            elif high_mark > low_mark:
-                results = query.Get(high_mark - low_mark, low_mark)
                 executed = True
             else:
                 results = ()
