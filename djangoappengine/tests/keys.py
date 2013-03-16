@@ -6,7 +6,11 @@ from django.db.utils import DatabaseError
 from django.test import TestCase
 from django.utils import unittest
 
+from djangoappengine.fields import DbKeyField
+from djangoappengine.db.utils import as_ancestor
 from djangotoolbox.fields import ListField
+
+from google.appengine.api.datastore import Key
 
 
 class AutoKey(models.Model):
@@ -287,3 +291,164 @@ class KeysTest(TestCase):
         parents_column = child._meta.get_field('parents').column
         self.assertEqual(child_entity[parent_column], parent_key)
         self.assertEqual(child_entity[parents_column][0], parent_key)
+
+
+class ParentModel(models.Model):
+    key = DbKeyField(primary_key=True)
+
+class NonDbKeyParentModel(models.Model):
+    id = models.AutoField(primary_key=True)
+
+class ChildModel(models.Model):
+    key = DbKeyField(primary_key=True, parent_key_name='parent_key')
+
+class AnotherChildModel(models.Model):
+    key = DbKeyField(primary_key=True, parent_key_name='parent_key')
+
+class ForeignKeyModel(models.Model):
+    id = models.AutoField(primary_key=True)
+    relation = models.ForeignKey(ParentModel)
+
+class DbKeyFieldTest(TestCase):
+    def testDbKeySave(self):
+        model = ParentModel()
+        model.save()
+
+        self.assertIsNotNone(model.pk)
+
+    def testForeignKeyWithGAEKey(self):
+        parent = ParentModel()
+        parent.save()
+
+        fkm = ForeignKeyModel()
+        fkm.relation = parent
+        fkm.save()
+
+        results = list(ForeignKeyModel.objects.filter(relation=parent))
+        self.assertEquals(1, len(results))
+        self.assertEquals(results[0].pk, fkm.pk)
+
+    def testPrimaryKeyQuery(self):
+        parent = ParentModel()
+        parent.save()
+
+        db_parent = ParentModel.objects.get(pk=parent.pk)
+
+        self.assertEquals(parent.pk, db_parent.pk)
+
+class ParentKeyTest(TestCase):
+    def testParentChildSave(self):
+        parent = ParentModel()
+        orig_parent_pk = parent.pk
+        parent.save()
+
+        child = ChildModel(parent_key=parent.pk)
+        orig_child_pk = child.pk
+        child.save()
+
+        self.assertNotEquals(parent.pk, orig_parent_pk)
+        self.assertNotEquals(child.pk, orig_child_pk)
+        self.assertEquals(child.pk.parent(), parent.pk)
+
+    def testParentModelChildSave(self):
+        parent = ParentModel()
+        orig_parent_pk = parent.pk
+        parent.save()
+
+        with self.assertRaises(ValueError):
+            child = ChildModel(parent_key=parent)
+
+    def testNonDbKeyParent(self):
+        parent = NonDbKeyParentModel()
+        parent.save()
+
+        with self.assertRaises(ValueError):
+            child = ChildModel(parent_key=parent.pk)
+
+class AncestorQueryTest(TestCase):
+    def testAncestorFilterQuery(self):
+        parent = ParentModel()
+        parent.save()
+
+        child = ChildModel(parent_key=parent.pk)
+        child.save()
+
+        results = list(ChildModel.objects.filter(pk=as_ancestor(parent.pk)))
+
+        self.assertEquals(1, len(results))
+        self.assertEquals(results[0].pk, child.pk)
+
+    def testAncestorGetQuery(self):
+        parent = ParentModel()
+        parent.save()
+
+        child = ChildModel(parent_key=parent.pk)
+        child.save()
+
+        result = ChildModel.objects.get(pk=as_ancestor(parent.pk))
+
+        self.assertEquals(result.pk, child.pk)
+
+    def testEmptyAncestorQuery(self):
+        parent = ParentModel()
+        parent.save()
+
+        results = list(ChildModel.objects.filter(pk=as_ancestor(parent.pk)))
+
+        self.assertEquals(0, len(results))
+
+    def testEmptyAncestorQueryWithUnsavedChild(self):
+        parent = ParentModel()
+        parent.save()
+
+        child = ChildModel(parent_key=parent.pk)
+
+        results = list(ChildModel.objects.filter(pk=as_ancestor(parent.pk)))
+
+        self.assertEquals(0, len(results))
+
+    def testUnsavedAncestorQuery(self):
+        parent = ParentModel()
+
+        with self.assertRaises(ValueError):
+            results = list(ChildModel.objects.filter(pk=as_ancestor(parent.pk)))
+
+    def testDifferentChildrenAncestorQuery(self):
+        parent = ParentModel()
+        parent.save()
+
+        child1 = ChildModel(parent_key=parent.pk)
+        child1.save()
+        child2 = AnotherChildModel(parent_key=parent.pk)
+        child2.save()
+
+        results1 = list(ChildModel.objects.filter(pk=as_ancestor(parent.pk)))
+
+        self.assertEquals(1, len(results1))
+        self.assertEquals(results1[0].pk, child1.pk)
+
+        results2 = list(AnotherChildModel.objects.filter(pk=as_ancestor(parent.pk)))
+        self.assertEquals(1, len(results2))
+        self.assertEquals(results2[0].pk, child2.pk)
+
+    def testDifferentParentsAncestorQuery(self):
+        parent1 = ParentModel()
+        parent1.save()
+
+        child1 = ChildModel(parent_key=parent1.pk)
+        child1.save()
+
+        parent2 = ParentModel()
+        parent2.save()
+
+        child2 = ChildModel(parent_key=parent2.pk)
+        child2.save()
+
+        results1 = list(ChildModel.objects.filter(pk=as_ancestor(parent1.pk)))
+
+        self.assertEquals(1, len(results1))
+        self.assertEquals(results1[0].pk, child1.pk)
+
+        results2 = list(ChildModel.objects.filter(pk=as_ancestor(parent2.pk)))
+        self.assertEquals(1, len(results2))
+        self.assertEquals(results2[0].pk, child2.pk)
