@@ -1,4 +1,5 @@
 from djangotoolbox.db.creation import NonrelDatabaseCreation
+from djangoappengine.fields import DbKeyField
 
 from .db_settings import get_model_indexes
 from .stubs import stub_manager
@@ -20,6 +21,7 @@ class DatabaseCreation(NonrelDatabaseCreation):
         'SetField':           'list',
         'DictField':          'bytes',
         'EmbeddedModelField': 'bytes',
+        'DbKeyField':         'raw',
     })
 
     def db_type(self, field):
@@ -32,6 +34,11 @@ class DatabaseCreation(NonrelDatabaseCreation):
         field is to be indexed, and the "text" db_type (db.Text) if
         it's registered as unindexed.
         """
+        # DbKeyField reads/stores db.Key objects directly
+        # so its treated as a special case
+        if isinstance(field, DbKeyField):
+            return field.db_type(connection=self.connection)
+
         if self.connection.settings_dict.get('STORE_RELATIONS_AS_DB_KEYS'):
             if field.primary_key or field.rel is not None:
                 return 'key'
