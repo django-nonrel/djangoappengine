@@ -1,6 +1,8 @@
+from djangoappengine.db.utils import get_cursor, set_cursor
+
 from google.appengine.api.datastore import Key
 
-from mapreduce.input_readers import DatastoreEntityInputReader
+from mapreduce.input_readers import DatastoreEntityInputReader, _get_params, BadReaderParamsError
 from mapreduce import util
 
 class DjangoModelInputReader(DatastoreEntityInputReader):
@@ -16,6 +18,17 @@ class DjangoModelInputReader(DatastoreEntityInputReader):
         """Returns an datastore entity kind from a Django model."""
         model_class = util.for_name(entity_kind)
         return model_class._meta.db_table
+
+    @classmethod
+    def validate(cls, mapper_spec):
+        super(DjangoModelInputReader, cls).validate(mapper_spec)
+
+        params = _get_params(mapper_spec)
+        entity_kind_name = params[cls.ENTITY_KIND_PARAM]
+        try:
+            util.for_name(entity_kind_name)
+        except ImportError, e:
+            raise BadReaderParamsError("Bad entity kind: %s" % e)
 
     def _iter_key_range(self, k_range):
         # Namespaces are not supported by djangoappengine
@@ -40,6 +53,24 @@ class DjangoModelInputReader(DatastoreEntityInputReader):
 
         q = q.order_by('pk')
 
-        for entity in q:
-            key = Key.from_path(model_class._meta.db_table, entity.pk)
-            yield key, entity
+        cursor = None
+        while True:
+            if cursor:
+                q = set_cursor(q, cursor)
+
+            results = q[:self._batch_size]
+
+            if not results:
+                break
+
+            for entity in results.iterator():
+                if has_gae_pk:
+                    key = entity.pk
+                else:
+                    key = Key.from_path(model_class._meta.db_table, entity.pk)
+
+                yield key, entity
+
+            cursor = get_cursor(results)
+            if not cursor:
+                break
