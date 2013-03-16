@@ -23,7 +23,7 @@ from djangotoolbox.db.basecompiler import (
 
 from .db_settings import get_model_indexes
 from .expressions import ExpressionEvaluator
-from .utils import commit_locked
+from .utils import AncestorKey, commit_locked
 
 
 # Valid query types (a dictionary is used for speedy lookups).
@@ -87,6 +87,7 @@ class GAEQuery(NonrelQuery):
         self.included_pks = None
         self.excluded_pks = ()
         self.has_negated_exact_filter = False
+        self.ancestor_key = None
         self.ordering = []
         self.db_table = self.query.get_meta().db_table
         self.pks_only = (len(fields) == 1 and fields[0].primary_key)
@@ -197,6 +198,14 @@ class GAEQuery(NonrelQuery):
         # Optimization: batch-get by key; this is only suitable for
         # primary keys, not for anything that uses the key type.
         if field.primary_key and lookup_type in ('exact', 'in'):
+            if lookup_type == 'exact' and isinstance(value, AncestorKey):
+                if negated:
+                    raise DatabaseError("You can't negate an ancestor operator.")
+                if self.ancestor_key is not None:
+                    raise DatabaseError("You can't use more than one ancestor operator.")
+                self.ancestor_key = value.key
+                return
+
             if self.included_pks is not None:
                 raise DatabaseError("You can't apply multiple AND "
                                     "filters on the primary key. "
@@ -318,6 +327,8 @@ class GAEQuery(NonrelQuery):
     def _build_query(self):
         for query in self.gae_query:
             query.Order(*self.ordering)
+            if self.ancestor_key:
+                query.Ancestor(self.ancestor_key)
         if len(self.gae_query) > 1:
             return MultiQuery(self.gae_query, self.ordering)
         return self.gae_query[0]
@@ -403,6 +414,7 @@ class SQLInsertCompiler(NonrelInsertCompiler, SQLCompiler):
                     if value is not None:
                         kwds['id'] = value.id()
                         kwds['name'] = value.name()
+                        kwds['parent'] = value.parent()
 
                 # GAE does not store empty lists (and even does not allow
                 # passing empty lists to Entity.update) so skip them.
