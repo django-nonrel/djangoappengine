@@ -70,7 +70,7 @@ class DatabaseCreation(NonrelDatabaseCreation):
             stub_manager.activate_test_stubs(self.connection)
 
     def _destroy_test_db(self, *args, **kw):
-        if self._had_test_stubs:
+        if getattr(self, '_had_test_stubs', False):
             stub_manager.deactivate_test_stubs()
             stub_manager.setup_stubs(self.connection)
-        del self._had_test_stubs
+            del self._had_test_stubs
