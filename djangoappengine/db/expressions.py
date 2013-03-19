@@ -8,8 +8,8 @@ OPERATION_MAP = {
     ExpressionNode.MUL: lambda x, y: x * y,
     ExpressionNode.DIV: lambda x, y: x / y,
     ExpressionNode.MOD: lambda x, y: x % y,
-    ExpressionNode.AND: lambda x, y: x & y,
-    ExpressionNode.OR: lambda x, y: x | y,
+    ExpressionNode.BITAND: lambda x, y: x & y,
+    ExpressionNode.BITOR:  lambda x, y: x | y,
 }
 
 
