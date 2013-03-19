@@ -32,18 +32,12 @@ DATABASES = {
         # 'STORE_RELATIONS_AS_DB_KEYS': True,
 
         'DEV_APPSERVER_OPTIONS': {
+            'use_sqlite': True,
             # Optional parameters for development environment.
 
             # Emulate the high-replication datastore locally.
             # TODO: Likely to break loaddata (some records missing).
             # 'high_replication' : True,
-
-            # Use the SQLite backend for local storage (instead of
-            # default in-memory datastore). Useful for testing with
-            # larger datasets or when debugging concurrency/async
-            # issues (separate processes will share a common db state,
-            # rather than syncing on startup).
-            # 'use_sqlite': True,
         },
     },
 }
