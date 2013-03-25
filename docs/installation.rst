@@ -4,12 +4,12 @@ Make sure you've installed the `App Engine SDK`_. On Windows simply use the defa
 
 Download the following zip files:
 
-* `django-nonrel <https://github.com/django-nonrel/django-nonrel/zipball/develop>`__ (or `clone it <https://github.com/django-nonrel/django-nonrel.git>`__)
-* `djangoappengine <https://github.com/django-nonrel/djangoappengine/zipball/develop>`__ (or `clone it <https://github.com/django-nonrel/djangoappengine.git>`__)
-* `djangotoolbox <https://github.com/django-nonrel/djangotoolbox/zipball/develop>`__ (or `clone it <https://github.com/django-nonrel/djangotoolbox.git>`__)
+* `django-nonrel <https://github.com/django-nonrel/django/zipball/nonrel-1.4>`__ (or `clone it <https://github.com/django-nonrel/django.git>`__)
+* `djangoappengine <https://github.com/django-nonrel/djangoappengine/zipball/appengine-1.4>`__ (or `clone it <https://github.com/django-nonrel/djangoappengine.git>`__)
+* `djangotoolbox <https://github.com/django-nonrel/djangotoolbox/zipball/toolbox-1.4>`__ (or `clone it <https://github.com/django-nonrel/djangotoolbox.git>`__)
 * `django-autoload <http://bitbucket.org/twanschik/django-autoload/get/tip.zip>`__ (or `clone it <https://bitbucket.org/twanschik/django-autoload>`__)
-* `django-dbindexer <https://github.com/django-nonrel/django-dbindexer/zipball/develop>`__ (or `clone it <https://github.com/django-nonrel/django-dbindexer.git>`__)
-* `django-testapp <https://github.com/django-nonrel/django-testapp/zipball/develop>`__ (or `clone it <https://github.com/django-nonrel/django-testapp.git>`__)
+* `django-dbindexer <https://github.com/django-nonrel/django-dbindexer/zipball/dbindexer-1.4>`__ (or `clone it <https://github.com/django-nonrel/django-dbindexer.git>`__)
+* `django-testapp <https://github.com/django-nonrel/django-testapp/zipball/testapp-1.4>`__ (or `clone it <https://github.com/django-nonrel/django-testapp.git>`__)
 
 Unzip everything.
 
