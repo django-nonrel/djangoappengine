@@ -100,7 +100,7 @@ class GAEQuery(NonrelQuery):
         return '<GAEQuery: %r ORDER %r>' % (self.gae_query, self.ordering)
 
     @safe_call
-    def fetch(self, low_mark, high_mark):
+    def fetch(self, low_mark=0, high_mark=None):
         query = self._build_query()
         executed = False
         if self.excluded_pks and high_mark is not None:
