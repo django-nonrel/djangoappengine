@@ -1,10 +1,14 @@
 Changelog
 =========
 
-Version 1.0.0
+Version 1.4.0
 -------------
 
+Note: This is the first release with a new version scheme. The major and
+minor numbers matches the supported Django version.
+
 * Added support for Django 1.4
+* Added App Engine MapReduce helpers, requires mapreduce r452 or greater
 * Added ``set_config`` function to ``db.utils`` to add Datastore config
   options, such as ``batch_size`` and ``read_policy``
 * Added Django Admin documentation (Thanks smeyfroi)

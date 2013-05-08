@@ -10,7 +10,7 @@ except:
 
 
 setup(name='djangoappengine',
-      version='1.0',
+      version='1.4.0',
       packages=find_packages(exclude=['docs']),
       install_requires=['djangotoolbox'],
       author='Waldemar Kornewald',
