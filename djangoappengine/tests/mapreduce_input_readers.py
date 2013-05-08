@@ -2,21 +2,24 @@ from django.db import models
 from django.test import TestCase
 from django.utils import unittest
 
-from djangoappengine.mapreduce.input_readers import DjangoModelInputReader
-
 from google.appengine.api.datastore import Key
 
 try:
+    from djangoappengine.mapreduce.input_readers import DjangoModelInputReader, DjangoModelIterator
+
     import mapreduce
 
-    from mapreduce.lib import key_range
     from mapreduce import input_readers
+    from mapreduce.lib import key_range
     from mapreduce import model
 except ImportError:
     mapreduce = None
 
 class TestModel(models.Model):
     test_property = models.IntegerField(default=0)
+
+    def __unicode__(self):
+        return str(self.test_property)
 
 ENTITY_KIND = '%s.%s' % (TestModel.__module__, TestModel.__name__)
 
@@ -62,21 +65,80 @@ class DjangoModelInputReaderTest(TestCase):
                             DjangoModelInputReader.validate,
                             mapper_spec)
 
+    def testValidate_BadNamespace(self):
+        """Test validate function with bad namespace."""
+        params = {
+            "entity_kind": ENTITY_KIND,
+            "namespace": 'namespace',
+            }
+        mapper_spec = model.MapperSpec(
+            "FooHandler",
+            "djangoappengine.mapreduce.input_readers.DjangoModelInputReader",
+            params, 1)
+        self.assertRaises(input_readers.BadReaderParamsError,
+                            DjangoModelInputReader.validate,
+                            mapper_spec)
+
     def testGeneratorWithKeyRange(self):
         """Test DjangoModelInputReader as generator using KeyRanges."""
         expected_entities = []
-        for _ in range(0, 100):
-            entity = TestModel()
+        for i in range(0, 100):
+            entity = TestModel(test_property=i)
             entity.save()
             expected_entities.append(entity)
 
-        kranges = [key_range.KeyRange(key_start=key(1), key_end=key(10000), direction="ASC")]
+        params = {
+            "entity_kind": ENTITY_KIND,
+            }
+        mapper_spec = model.MapperSpec(
+            "FooHandler",
+            "djangoappengine.mapreduce.input_readers.DjangoModelInputReader",
+            params, 1)
 
-        query_range = DjangoModelInputReader(ENTITY_KIND, key_ranges=kranges, ns_range=None, batch_size=10)
+        input_ranges = DjangoModelInputReader.split_input(mapper_spec)
 
         entities = []
-        for entity in query_range:
-            entities.append(entity)
+        for query_range in input_ranges:
+            for entity in query_range:
+                entities.append(entity)
 
         self.assertEquals(100, len(entities))
         self.assertEquals(expected_entities, entities)
+
+@unittest.skipUnless(mapreduce, 'mapreduce not installed')
+class DjangoModelIteratorTest(TestCase):
+    def setUp(self):
+        expected_entities = []
+        for i in range(0, 100):
+            entity = TestModel(test_property=i)
+            entity.save()
+            expected_entities.append(entity)
+
+        self.expected_entities = expected_entities
+
+    def testCursors(self):
+        qs = model.QuerySpec(TestModel, model_class_path=ENTITY_KIND)
+        kr = key_range.KeyRange(key_start=key(1), key_end=key(10000), direction="ASC")
+
+        json = { 'key_range': kr.to_json(), 'query_spec': qs.to_json(), 'cursor': None }
+
+        entities = []
+        while True:
+            model_iter = DjangoModelIterator.from_json(json)
+
+            c = False
+            count = 0
+            for entity in model_iter:
+                count += 1
+                entities.append(entity)
+                if count == 10:
+                    c = True
+                    break
+
+            if c:
+                json = model_iter.to_json()
+            else:
+                break
+
+        self.assertEquals(100, len(entities))
+        self.assertEquals(self.expected_entities, entities)
