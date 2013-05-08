@@ -27,9 +27,11 @@ def _add_mixin(queryset):
     return queryset
 
 def get_cursor(queryset):
-    # Evaluate QuerySet
-    if queryset._result_cache is None:
-        len(queryset)
+    if not hasattr(queryset.query, '_gae_cursor'):
+        # evaluate QuerySet only if there's no cursor set
+        # this ensures that the query isn't run twice
+        if queryset._result_cache is None:
+            len(queryset)
 
     cursor = None
     if hasattr(queryset.query, '_gae_cursor'):

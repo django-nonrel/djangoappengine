@@ -129,7 +129,7 @@ class GAEQuery(NonrelQuery):
 
         if executed and not isinstance(query, MultiQuery):
             def get_cursor():
-                return query.GetCompiledCursor()
+                return query.GetCursor()
             self.query._gae_cursor = get_cursor
 
         for entity in results:
