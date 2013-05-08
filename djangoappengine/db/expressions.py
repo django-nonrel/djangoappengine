@@ -38,4 +38,11 @@ class ExpressionEvaluator(SQLEvaluator):
         return OPERATION_MAP[node.connector](*values)
 
     def evaluate_leaf(self, node, qn, connection):
-        return self.entity[qn(self.cols[node][1])]
+        col = None
+        for n, c in self.cols:
+            if n is node:
+                col = c
+                break
+        if col is None:
+            raise ValueError("Given node not found")
+        return self.entity[qn(col[1])]
