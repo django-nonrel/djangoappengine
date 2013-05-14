@@ -17,7 +17,8 @@ from django.http import HttpResponse
 from django.utils.encoding import smart_str, force_unicode
 
 from google.appengine.api import files
-from google.appengine.api.images import get_serving_url, NotImageError
+from google.appengine.api.images import get_serving_url, NotImageError, \
+    TransformationError
 from google.appengine.ext.blobstore import BlobInfo, BlobKey, delete, \
     create_upload_url, BLOB_KEY_HEADER, BLOB_RANGE_HEADER, BlobReader
 
@@ -100,7 +101,7 @@ class BlobstoreStorage(Storage):
     def url(self, name):
         try:
             return get_serving_url(self._get_blobinfo(name))
-        except NotImageError:
+        except (NotImageError, TransformationError):
             return None
 
     def created_time(self, name):
