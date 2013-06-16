@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 1.5.0
+-------------
+
+* Added support for Django 1.5
+* Added continuous integration using Travis CI
+
 Version 1.4.0
 -------------
 
