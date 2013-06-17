@@ -7,6 +7,16 @@ Djangoappengine allows you to use App Engine's datastore with
 Django. It provides the necessary plumbing to query the datastore, and
 custom management commands for deploying and running the SDK.
 
+:1.3 branch:
+    .. image:: https://secure.travis-ci.org/django-nonrel/djangoappengine.png?branch=appengine-1.3
+        :target: https://travis-ci.org/django-nonrel/djangoappengine
+:1.4 branch:
+    .. image:: https://secure.travis-ci.org/django-nonrel/djangoappengine.png?branch=appengine-1.4
+        :target: https://travis-ci.org/django-nonrel/djangoappengine
+:1.5 branch:
+    .. image:: https://secure.travis-ci.org/django-nonrel/djangoappengine.png?branch=appengine-1.5-beta
+        :target: https://travis-ci.org/django-nonrel/djangoappengine
+
 Contributing
 ------------
 You are highly encouraged to participate in the development, simply use
