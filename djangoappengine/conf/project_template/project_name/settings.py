@@ -5,21 +5,6 @@
 # of "djangoappengine" from this file.
 from djangoappengine.settings_base import *
 
-import os
-
-AUTOLOAD_SITECONF = 'indexes'
-
-TEMPLATE_CONTEXT_PROCESSORS = (
-    'django.contrib.auth.context_processors.auth',
-    'django.core.context_processors.request',
-    'django.core.context_processors.media',
-)
-
-ADMIN_MEDIA_PREFIX = '/media/admin/'
-
-DEBUG = True
-TEMPLATE_DEBUG = DEBUG
-
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
 )
@@ -28,6 +13,8 @@ MANAGERS = ADMINS
 
 # Activate django-dbindexer for the default database
 DATABASES['default'] = {'ENGINE': 'dbindexer', 'TARGET': DATABASES['default']}
+
+AUTOLOAD_SITECONF = 'indexes'
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
