@@ -1,0 +1,25 @@
+branches:
+  only:
+    - appengine-1.4
+    - appengine-1.5-beta
+
+language: python
+
+python:
+  - 2.7
+
+env:
+  - APPENGINE_SDK_VERSION=1.8.1
+
+install:
+  - pip install git+http://github.com/django-nonrel/django@nonrel-1.4\#egg=django --target=$PWD
+  - pip install git+http://github.com/django-nonrel/djangotoolbox@toolbox-1.4\#egg=djangotoolbox --target=$PWD
+  - pip install git+http://github.com/django-nonrel/django-dbindexer@dbindexer-1.4\#egg=django-dbindexer --target=$PWD
+  - pip install git+https://github.com/adieu/django-autoload\#egg=django-autoload --target=$PWD
+
+before_script:
+  - wget http://googleappengine.googlecode.com/files/google_appengine_$APPENGINE_SDK_VERSION.zip -nv
+  - unzip -q google_appengine_$APPENGINE_SDK_VERSION.zip
+  - PYTHONPATH=. python django/bin/django-admin.py startproject --name=app.yaml --template=djangoappengine/conf/project_template appenginetest .
+
+script: ./manage.py test djangoappengine djangotoolbox dbindexer
