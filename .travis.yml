@@ -1,5 +1,6 @@
 branches:
   only:
+    - appengine-1.4
     - appengine-1.5-beta
 
 language: python
