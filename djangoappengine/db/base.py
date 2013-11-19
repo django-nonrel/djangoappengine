@@ -100,7 +100,7 @@ class DatabaseOperations(NonrelDatabaseOperations):
     # Time used to store dates as datetimes.
     DEFAULT_TIME = datetime.time()
 
-    def sql_flush(self, style, tables, sequences):
+    def sql_flush(self, style, tables, sequences, allow_cascade=False):
         self.connection.flush()
         return []
 
@@ -274,7 +274,7 @@ class DatabaseValidation(NonrelDatabaseValidation):
 
 class DatabaseIntrospection(NonrelDatabaseIntrospection):
 
-    def table_names(self):
+    def table_names(self, cursor=None):
         """
         Returns a list of names of all tables that exist in the
         database.

@@ -19,7 +19,10 @@ from djangotoolbox.db.basecompiler import (
     NonrelCompiler,
     NonrelInsertCompiler,
     NonrelUpdateCompiler,
-    NonrelDeleteCompiler)
+    NonrelDeleteCompiler,
+    NonrelAggregateCompiler,
+    NonrelDateCompiler,
+    NonrelDateTimeCompiler)
 
 from .db_settings import get_model_indexes
 from .expressions import ExpressionEvaluator
@@ -465,4 +468,14 @@ class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
 
 
 class SQLDeleteCompiler(NonrelDeleteCompiler, SQLCompiler):
+    pass
+
+
+class SQLAggregateCompiler(NonrelAggregateCompiler, SQLCompiler):
+    pass
+
+class SQLDateCompiler(NonrelDateCompiler, SQLCompiler):
+    pass
+
+class SQLDateTimeCompiler(NonrelDateTimeCompiler, SQLCompiler):
     pass
