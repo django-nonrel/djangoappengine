@@ -1,5 +1,4 @@
 from __future__ import with_statement
-import warnings
 
 from django.db import connection, models
 from django.db.utils import DatabaseError
@@ -64,12 +63,6 @@ class KeysTest(TestCase):
     way to raise an exception earlier.
     """
 
-    def setUp(self):
-        self.save_warnings_state()
-
-    def tearDown(self):
-        self.restore_warnings_state()
-
     def test_auto_field(self):
         """
         GAE keys may hold either strings or positive integers, however
@@ -125,13 +118,6 @@ class KeysTest(TestCase):
               supports_primary_key_on to prevent validation of models
               using unsupported primary keys.
         """
-
-        # TODO: Move to djangotoolbox or django.db.utils?
-        class Warning(StandardError):
-            """Database warning (name following PEP 249)."""
-            pass
-
-        warnings.simplefilter('error', Warning)
 
         # This should just work.
         class AutoFieldKey(models.Model):
