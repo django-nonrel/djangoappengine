@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Version 1.6.0
+-------------
+
+Note: This is release includes support for Django versions 1.4, 1.5 and 1.6.
+You no longer need to use a separate version for each Django version.
+
+* Added support for Django 1.6
+
 Version 1.5.0
 -------------
 
