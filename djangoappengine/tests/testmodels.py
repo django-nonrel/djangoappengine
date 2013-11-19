@@ -21,7 +21,7 @@ class FieldsWithoutOptionsModel(models.Model):
     date = models.DateField()
     time = models.TimeField()
     floating_point = models.FloatField()
-    boolean = models.BooleanField()
+    boolean = models.BooleanField(default=False)
     null_boolean = models.NullBooleanField()
     text = models.CharField(max_length=32)
     email = models.EmailField()
@@ -58,7 +58,7 @@ class FieldsWithOptionsModel(models.Model):
     date = models.DateField(auto_now_add=True)
     time = models.TimeField()
     floating_point = models.FloatField(null=True)
-    boolean = models.BooleanField()
+    boolean = models.BooleanField(default=False)
     null_boolean = models.NullBooleanField(default=True)
     text = models.CharField(default='Hallo', max_length=10)
     email = models.EmailField(default='app-engine@scholardocs.com',
