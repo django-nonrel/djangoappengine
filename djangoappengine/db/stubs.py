@@ -3,8 +3,6 @@ import os
 import time
 from urllib2 import HTTPError, URLError
 
-from google.appengine.ext.testbed import Testbed
-
 from ..boot import PROJECT_DIR
 from ..utils import appid, have_appserver
 
@@ -29,7 +27,7 @@ def rpc_server_factory(*args, ** kwargs):
 class StubManager(object):
 
     def __init__(self):
-        self.testbed = Testbed()
+        self.testbed = None
         self.active_stubs = None
         self.pre_test_stubs = None
 
@@ -52,6 +50,10 @@ class StubManager(object):
         if high_replication:
             from google.appengine.datastore import datastore_stub_util
             datastore_opts['consistency_policy'] = datastore_stub_util.PseudoRandomHRConsistencyPolicy(probability=1)
+
+        if self.testbed is None:
+            from google.appengine.ext.testbed import Testbed
+            self.testbed = Testbed()
 
         self.testbed.activate()
         self.pre_test_stubs = self.active_stubs

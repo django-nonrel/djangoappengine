@@ -38,6 +38,7 @@ def setup_env():
         paths = [os.path.join(PROJECT_DIR, 'google_appengine'),
                  os.environ.get('APP_ENGINE_SDK'),
                  '/usr/local/google_appengine',
+                 '/usr/local/opt/google-app-engine/share/google-app-engine',
                  '/Applications/GoogleAppEngineLauncher.app/Contents/Resources/GoogleAppEngine-default.bundle/Contents/Resources/google_appengine']
         for path in os.environ.get('PATH', '').split(os.pathsep):
             path = path.rstrip(os.sep)

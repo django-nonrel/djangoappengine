@@ -1,5 +1,6 @@
 import mimetypes
 import os
+import urlparse
 
 try:
     from cStringIO import StringIO
@@ -14,10 +15,11 @@ from django.core.files.uploadhandler import FileUploadHandler, \
     StopFutureHandlers
 from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpResponse
-from django.utils.encoding import smart_str, force_unicode
+from django.utils.encoding import smart_str, force_unicode, filepath_to_uri
 
 from google.appengine.api import files
-from google.appengine.api.images import get_serving_url, NotImageError
+from google.appengine.api.images import get_serving_url, NotImageError, \
+    TransformationError, BlobKeyRequiredError
 from google.appengine.ext.blobstore import BlobInfo, BlobKey, delete, \
     create_upload_url, BLOB_KEY_HEADER, BLOB_RANGE_HEADER, BlobReader
 
@@ -100,7 +102,7 @@ class BlobstoreStorage(Storage):
     def url(self, name):
         try:
             return get_serving_url(self._get_blobinfo(name))
-        except NotImageError:
+        except (NotImageError, TransformationError):
             return None
 
     def created_time(self, name):
@@ -118,6 +120,12 @@ class BlobstoreStorage(Storage):
     def _get_blobinfo(self, name):
         return BlobInfo.get(self._get_key(name))
 
+class DevBlobstoreStorage(BlobstoreStorage):
+    def url(self, name):
+        try:
+            return super(DevBlobstoreStorage, self).url(name)
+        except BlobKeyRequiredError:
+            return urlparse.urljoin(settings.MEDIA_URL, filepath_to_uri(name))
 
 class BlobstoreFile(File):
 
