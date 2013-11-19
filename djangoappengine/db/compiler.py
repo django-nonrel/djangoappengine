@@ -453,7 +453,6 @@ class SQLUpdateCompiler(NonrelUpdateCompiler, SQLCompiler):
 
             if hasattr(value, 'evaluate'):
                 assert not value.negated
-                assert not value.subtree_parents
                 value = ExpressionEvaluator(value, self.query, entity,
                                             allow_joins=False)
 
