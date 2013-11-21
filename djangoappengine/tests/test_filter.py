@@ -10,7 +10,7 @@ from django.utils import unittest
 from google.appengine.api.datastore import Get, Key
 
 from ..db.utils import get_cursor, set_cursor
-from .testmodels import FieldsWithOptionsModel, EmailModel, DateTimeModel, \
+from .models import FieldsWithOptionsModel, EmailModel, DateTimeModel, \
     OrderedModel, BlobModel
 
 

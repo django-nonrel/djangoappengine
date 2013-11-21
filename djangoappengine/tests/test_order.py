@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from .testmodels import OrderedModel
+from .models import OrderedModel
 
 
 class OrderTest(TestCase):

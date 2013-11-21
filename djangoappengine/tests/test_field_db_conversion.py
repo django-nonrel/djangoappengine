@@ -7,7 +7,7 @@ from google.appengine.api.datastore_types import Text, Category, Email, \
     Link, PhoneNumber, PostalAddress, Text, Blob, ByteString, GeoPt, IM, \
     Key, Rating, BlobKey
 
-from .testmodels import FieldsWithoutOptionsModel
+from .models import FieldsWithoutOptionsModel
 
 # TODO: Add field conversions for ForeignKeys?
 

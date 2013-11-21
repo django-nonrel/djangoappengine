@@ -1,7 +1,7 @@
 from django.db.models import F
 from django.test import TestCase
 
-from .testmodels import EmailModel
+from .models import EmailModel
 
 
 class TransactionTest(TestCase):

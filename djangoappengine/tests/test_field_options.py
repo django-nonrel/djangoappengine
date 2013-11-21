@@ -11,7 +11,7 @@ from google.appengine.api.datastore_types import Text, Category, Email, Link, \
     Rating, BlobKey
 from google.appengine.ext.db import Key
 
-from .testmodels import FieldsWithOptionsModel, NullableTextModel
+from .models import FieldsWithOptionsModel, NullableTextModel
 
 
 class FieldOptionsTest(TestCase):

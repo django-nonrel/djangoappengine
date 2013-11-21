@@ -3,7 +3,7 @@ import datetime
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.test import TestCase
 
-from .testmodels import FieldsWithOptionsModel, OrderedModel, \
+from .models import FieldsWithOptionsModel, OrderedModel, \
     SelfReferenceModel
 
 
