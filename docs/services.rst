@@ -44,9 +44,7 @@ Make sure that your ``app.yaml`` specifies the correct ``deferred`` handler. It 
 This custom handler initializes ``djangoappengine`` before it passes the request to App Engine's internal ``deferred`` handler.
 
 .. _djangotoolbox: https://github.com/django-nonrel/djangotoolbox
-.. _testapp: https://github.com/django-nonrel/django-testapp
-.. _django-testapp: https://github.com/django-nonrel/django-testapp
-.. _django-nonrel: http://django-nonrel.github.com/
+.. _django-nonrel: http://django-nonrel.org/
 .. _djangoappengine: https://github.com/django-nonrel/djangoappengine
 .. _source: https://github.com/django-nonrel/djangoappengine
 .. _App Engine SDK: https://developers.google.com/appengine/downloads

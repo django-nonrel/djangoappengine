@@ -42,9 +42,7 @@ Since you can't upload more than 10000 files on App Engine you sometimes have to
 In order to create a zip package simply select a Python package (e.g., a Django app) and zip it. However, keep in mind that only Python modules can be loaded transparently from such a zip file. You can't easily access templates and JavaScript files from a zip package, for example. In order to be able to access the templates you should move the templates into your global "templates" folder within your project before zipping the Python package.
 
 .. _djangotoolbox: https://github.com/django-nonrel/djangotoolbox
-.. _testapp: https://github.com/django-nonrel/django-testapp
-.. _django-testapp: https://github.com/django-nonrel/django-testapp
-.. _django-nonrel: http://django-nonrel.github.com/
+.. _django-nonrel: http://django-nonrel.org/
 .. _djangoappengine: https://github.com/django-nonrel/djangoappengine
 .. _source: https://github.com/django-nonrel/djangoappengine
 .. _App Engine SDK: https://developers.google.com/appengine/downloads
