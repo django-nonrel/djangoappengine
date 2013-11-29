@@ -1,10 +1,4 @@
-from distutils.core import setup
-import os
-
-def get_packages(package):
-    return [dirpath
-            for dirpath, dirnames, filenames in os.walk(package)
-            if os.path.exists(os.path.join(dirpath, '__init__.py'))]
+from setuptools import find_packages, setup
 
 
 DESCRIPTION = 'App Engine backends for Django-nonrel'
@@ -15,15 +9,17 @@ except:
     pass
 
 setup(name='djangoappengine',
-      version='1.6.0',
+      version='1.6.1',
       description=DESCRIPTION,
       long_description=LONG_DESCRIPTION,
       author='Waldemar Kornewald',
       author_email='wkornewald@gmail.com',
       url='https://github.com/django-nonrel/djangoappengine',
-      packages=get_packages('djangoappengine'),
-      requires=['djangotoolbox (>=1.6.0)'],
+      packages=find_packages(exclude=['docs']),
+      install_requires=['djangotoolbox>=1.6.0'],
+      zip_safe=False,
       license='3-clause BSD',
+      test_suite='djangoappengine.tests',
       classifiers=[
           'Development Status :: 5 - Production/Stable',
           'Environment :: Web Environment',
