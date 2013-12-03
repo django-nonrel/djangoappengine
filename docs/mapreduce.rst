@@ -14,11 +14,15 @@ Djangoappengine provides two modules to simplify running MapReduce jobs over Dja
 
 Installation
 ---------------------------------------------
-Checkout the mapreduce folder into your application directory::
+Checkout the mapreduce folder into your application directory:
 
-    svn checkout http://appengine-mapreduce.googlecode.com/svn/trunk/python/src/mapreduce
+.. sourcecode:: sh
 
-Add the mapreduce handlers to your app.yaml::
+   svn checkout http://appengine-mapreduce.googlecode.com/svn/trunk/python/src/mapreduce
+
+Add the mapreduce handlers to your app.yaml:
+
+.. sourcecode:: yaml
 
     handlers:
     - url: /mapreduce/pipeline/images
@@ -32,14 +36,18 @@ DjangoModelMapreduce and DjangoModelMap
 ---------------------------------------------
 DjangoModelMapreduce and DjangoModelMap are helper functions which return MapreducePipeline and MapperPipeline instances, respectively.
 
-DjangoModelMap allows you to specify a model class and a single function called a mapper. The mapper function can do anything to your model instance, including When running the pipeline, the mapper function is called on each instance of your model class. As an example, consider this simple model::
+DjangoModelMap allows you to specify a model class and a single function called a mapper. The mapper function can do anything to your model instance, including When running the pipeline, the mapper function is called on each instance of your model class. As an example, consider this simple model:
+
+.. sourcecode:: python
 
     class User(models.Model):
         name = models.CharField()
         city = models.CharField()
         age = models.IntegerField()
 
-A mapper class which output the name and age of each User in a tab-delimited format looks like this::
+A mapper class which output the name and age of each User in a tab-delimited format looks like this:
+
+.. sourcecode:: python
 
     from djangoappengine.mapreduce import pipeline as django_pipeline
     from mapreduce import base_handler
@@ -52,7 +60,9 @@ A mapper class which output the name and age of each User in a tab-delimited for
             yield django_pipeline.DjangoModelMap(User, name_age)
 
 
-A mapreduce class which outputs the average age of the users in each city looks like this::
+A mapreduce class which outputs the average age of the users in each city looks like this:
+
+.. sourcecode:: python
 
     from djangoappengine.mapreduce import pipeline as django_pipeline
     from mapreduce import base_handler
