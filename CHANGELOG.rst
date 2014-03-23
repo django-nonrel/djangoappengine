@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Version 1.6.2 (Mar 22, 2014)
+-------------
+
+* Fixed import errors caused by renamed dev_appserver in SDK 1.9.1
+
 Version 1.6.1 (Nov 29, 2013)
 -------------
 
