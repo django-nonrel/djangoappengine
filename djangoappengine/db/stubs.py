@@ -45,7 +45,7 @@ class StubManager(object):
 
         appserver_opts = connection.settings_dict.get('DEV_APPSERVER_OPTIONS', {})
         high_replication = appserver_opts.get('high_replication', False)
-        require_indexes = appserver_opts.get('require_indexes', True)
+        require_indexes = appserver_opts.get('require_indexes', False)
 
         datastore_opts = {'require_indexes': require_indexes}
 
