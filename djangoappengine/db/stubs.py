@@ -68,10 +68,6 @@ class StubManager(object):
         self.testbed.init_xmpp_stub()
         self.testbed.init_channel_stub()
 
-        if require_indexes:
-            from google.appengine.tools import dev_appserver_index
-            dev_appserver_index.SetupIndexes(None, None)
-
     def deactivate_test_stubs(self):
         if self.active_stubs == 'test':
             self.testbed.deactivate()
