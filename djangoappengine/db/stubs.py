@@ -45,8 +45,10 @@ class StubManager(object):
 
         appserver_opts = connection.settings_dict.get('DEV_APPSERVER_OPTIONS', {})
         high_replication = appserver_opts.get('high_replication', False)
+        require_indexes = appserver_opts.get('require_indexes', False)
 
-        datastore_opts = {}
+        datastore_opts = {'require_indexes': require_indexes}
+
         if high_replication:
             from google.appengine.datastore import datastore_stub_util
             datastore_opts['consistency_policy'] = datastore_stub_util.PseudoRandomHRConsistencyPolicy(probability=1)
@@ -58,7 +60,7 @@ class StubManager(object):
         self.testbed.activate()
         self.pre_test_stubs = self.active_stubs
         self.active_stubs = 'test'
-        self.testbed.init_datastore_v3_stub(**datastore_opts)
+        self.testbed.init_datastore_v3_stub(root_path=PROJECT_DIR, **datastore_opts)
         self.testbed.init_memcache_stub()
         self.testbed.init_taskqueue_stub(auto_task_running=True, root_path=PROJECT_DIR)
         self.testbed.init_urlfetch_stub()
