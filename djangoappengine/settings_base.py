@@ -33,6 +33,7 @@ DATABASES = {
 
         'DEV_APPSERVER_OPTIONS': {
             'use_sqlite': True,
+            'require_indexes': False, # if True, datastore indexes will not be auto-generated
             # Optional parameters for development environment.
 
             # Emulate the high-replication datastore locally.
