@@ -1,12 +1,14 @@
 from django.core.management.base import BaseCommand
 
+from djangoappengine.management.commands.runserver import Command as RunServerCommand
+
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.datastore import datastore_stub_util
 
 from optparse import make_option
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
+    option_list = RunServerCommand.option_list + (
         make_option('--noinput', action='store_false', dest='interactive', default=True,
             help='Tells Django to NOT prompt the user for input of any kind.'),
         make_option('--addrport', action='store', dest='addrport',
@@ -27,8 +29,6 @@ class Command(BaseCommand):
         from ...db.stubs import stub_manager
 
         verbosity = int(options.get('verbosity'))
-        interactive = options.get('interactive')
-        addrport = options.get('addrport')
 
         db_name = None
 
@@ -63,4 +63,4 @@ class Command(BaseCommand):
         # a strange error -- it causes this handle() method to be called
         # multiple times.
         shutdown_message = '\nServer stopped.\nNote that the test database, %r, has not been deleted. You can explore it on your own.' % db_name
-        call_command('runserver', addrport=addrport, shutdown_message=shutdown_message, use_reloader=False, use_ipv6=options['use_ipv6'])
+        call_command('runserver', shutdown_message=shutdown_message, use_reloader=False, **options)

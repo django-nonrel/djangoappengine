@@ -24,9 +24,17 @@ if 'django' in sys.modules and sys.modules['django'].VERSION < (1, 2):
               if k.startswith('django.') or k == 'django']:
         del sys.modules[k]
 
-from djangoappengine.boot import setup_env
-setup_env()
+if 'DJANGO_SETTINGS_MODULE' not in os.environ:
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 
+from django.conf import settings
+from django.core import signals
+from django.core.handlers.wsgi import WSGIHandler
+
+from djangoappengine.utils import on_production_server
+
+from djangoappengine.boot import setup_env
+setup_env(settings.DEV_APPSERVER_VERSION)
 
 def validate_models():
     """
@@ -54,22 +62,14 @@ def validate_models():
     else:
         logging.info("All models validated.")
 
-from djangoappengine.utils import on_production_server
 if not on_production_server:
     validate_models()
-
-from django.core.handlers.wsgi import WSGIHandler
-from google.appengine.ext.webapp.util import run_wsgi_app
-from django.conf import settings
-
 
 def log_traceback(*args, **kwargs):
     import logging
     logging.exception("Exception in request:")
 
-from django.core import signals
 signals.got_request_exception.connect(log_traceback)
-
 
 # Create a Django application for WSGI.
 application = WSGIHandler()

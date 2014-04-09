@@ -1,9 +1,14 @@
+try:
+    from dev_appserver_version import DEV_APPSERVER_VERSION
+except ImportError:
+    DEV_APPSERVER_VERSION = 2
+
 # Initialize App Engine SDK if necessary.
 try:
     from google.appengine.api import apiproxy_stub_map
 except ImportError:
-    from .boot import setup_env
-    setup_env()
+    from djangoappengine.boot import setup_env
+    setup_env(DEV_APPSERVER_VERSION)
 
 from djangoappengine.utils import on_production_server, have_appserver
 

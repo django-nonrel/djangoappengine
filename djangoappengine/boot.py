@@ -22,8 +22,11 @@ if 'DJANGO_SETTINGS_MODULE' not in os.environ:
     env_ext['DJANGO_SETTINGS_MODULE'] = 'settings'
 
 
-def setup_env():
+def setup_env(dev_appserver_version=1):
     """Configures GAE environment for command-line apps."""
+
+    if dev_appserver_version not in (1, 2):
+        raise Exception('Invalid dev_appserver_version setting, expected 1 or 2, got %s' % dev_appserver_version)
 
     # Try to import the appengine code from the system path.
     try:
@@ -74,10 +77,16 @@ def setup_env():
             from dev_appserver import fix_sys_path
         except ImportError:
             from old_dev_appserver import fix_sys_path
+
+        if dev_appserver_version == 2:
+            # emulate dev_appserver._run_file in devappserver2
+            from dev_appserver import _SYS_PATH_ADDITIONS
+            sys.path = _SYS_PATH_ADDITIONS['_python_runtime.py'] + sys.path
         fix_sys_path()
 
-    setup_project()
-    from .utils import have_appserver
+    setup_project(dev_appserver_version)
+
+    from djangoappengine.utils import have_appserver
     if have_appserver:
         # App Engine's threading.local is broken.
         setup_threading()
@@ -124,8 +133,8 @@ def setup_logging():
     logging.logMultiprocessing = 0
 
 
-def setup_project():
-    from .utils import have_appserver, on_production_server
+def setup_project(dev_appserver_version):
+    from djangoappengine.utils import have_appserver, on_production_server
     if have_appserver:
         # This fixes a pwd import bug for os.path.expanduser().
         env_ext['HOME'] = PROJECT_DIR
@@ -133,11 +142,11 @@ def setup_project():
     # The dev_appserver creates a sandbox which restricts access to
     # certain modules and builtins in order to emulate the production
     # environment. Here we get the subprocess module back into the
-    # dev_appserver sandbox.This module is just too important for
+    # dev_appserver sandbox. This module is just too important for
     # development. Also we add the compiler/parser module back and
     # enable https connections (seem to be broken on Windows because
     # the _ssl module is disallowed).
-    if not have_appserver:
+    if not have_appserver and dev_appserver_version == 1:
         try:
             from google.appengine.tools import dev_appserver
         except ImportError:
@@ -166,18 +175,19 @@ def setup_project():
             logging.warn("Could not patch modules whitelist. the compiler "
                          "and parser modules will not work and SSL support "
                          "is disabled.")
-    elif not on_production_server:
+    if not on_production_server:
         try:
-            try:
-                from google.appengine.tools import dev_appserver
-            except ImportError:
-                from google.appengine.tools import old_dev_appserver as dev_appserver
+            from google.appengine.tools.devappserver2.python import sandbox
+            sandbox._WHITE_LIST_C_MODULES.extend(['fcntl'])
 
-            # Restore the real subprocess module.
-            from google.appengine.api.mail_stub import subprocess
-            sys.modules['subprocess'] = subprocess
-            # Re-inject the buffer() builtin into the subprocess module.
-            subprocess.buffer = dev_appserver.buffer
+            for finder in sys.meta_path:
+                if isinstance(finder, sandbox.ModuleOverrideImportHook):
+                    del finder.policies['os']
+
+            from google.appengine.dist27 import MODULE_OVERRIDES
+            MODULE_OVERRIDES.remove('subprocess')
+
+            reload(os)
         except Exception, e:
             logging.warn("Could not add the subprocess module to the "
                          "sandbox: %s" % e)
