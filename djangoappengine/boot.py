@@ -180,11 +180,11 @@ def setup_project():
                          "is disabled.")
     elif not on_production_server:
         try:
-            from google.appengine.tools import dev_appserver
-        except ImportError:
-            from google.appengine.tools import old_dev_appserver as dev_appserver
+            try:
+                from google.appengine.tools import dev_appserver
+            except ImportError:
+                from google.appengine.tools import old_dev_appserver as dev_appserver
 
-        try:
             # Restore the real subprocess module.
             from google.appengine.api.mail_stub import subprocess
             sys.modules['subprocess'] = subprocess
