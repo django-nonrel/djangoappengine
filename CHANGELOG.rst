@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Version 1.6.3 (TBD)
+-------------
+
+* Add 'require_indexes' option to database 'DEV_APPSERVER_OPTIONS' to throw
+  exception if datastore index is missing. This is useful for unit testing.
+  (Thanks jacobg)
+* Fixed import error when launching from GoogleAppEngineLauncher
+
 Version 1.6.2 (Mar 22, 2014)
 -------------
 
