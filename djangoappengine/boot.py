@@ -123,18 +123,6 @@ def setup_logging():
     # Fix Python 2.6 logging module.
     logging.logMultiprocessing = 0
 
-    # Enable logging.
-    level = logging.DEBUG
-    from .utils import have_appserver
-    if have_appserver:
-        # We can't import settings at this point when running a normal
-        # manage.py command because this module gets imported from
-        # settings.py.
-        from django.conf import settings
-        if not settings.DEBUG:
-            level = logging.INFO
-    logging.getLogger().setLevel(level)
-
 
 def setup_project():
     from .utils import have_appserver, on_production_server
