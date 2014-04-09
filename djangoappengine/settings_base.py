@@ -33,12 +33,16 @@ DATABASES = {
 
         'DEV_APPSERVER_OPTIONS': {
             'use_sqlite': True,
-            'require_indexes': False, # if True, datastore indexes will not be auto-generated
+
             # Optional parameters for development environment.
 
             # Emulate the high-replication datastore locally.
             # TODO: Likely to break loaddata (some records missing).
             # 'high_replication' : True,
+
+            # Setting to True will trigger exceptions if a needed index is missing
+            # Setting to False will auto-generated index.yaml file
+            # 'require_indexes': True,
         },
     },
 }
