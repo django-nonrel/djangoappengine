@@ -3,8 +3,8 @@ import os
 import time
 from urllib2 import HTTPError, URLError
 
-from ..boot import PROJECT_DIR
-from ..utils import appid, have_appserver
+from djangoappengine.boot import PROJECT_DIR
+from djangoappengine.utils import appid, have_appserver
 
 
 REMOTE_API_SCRIPTS = (
