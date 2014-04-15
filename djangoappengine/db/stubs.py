@@ -88,7 +88,7 @@ class StubManager(object):
             from google.appengine.tools import dev_appserver
         except ImportError:
             from google.appengine.tools import old_dev_appserver as dev_appserver
-        dev_appserver.SetupStubs('dev~' + appid, **args)
+        dev_appserver.SetupStubs(appid, **args)
         logging.getLogger().setLevel(log_level)
         self.active_stubs = 'local'
 
