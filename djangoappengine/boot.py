@@ -175,19 +175,18 @@ def setup_project(dev_appserver_version):
             logging.warn("Could not patch modules whitelist. the compiler "
                          "and parser modules will not work and SSL support "
                          "is disabled.")
-    if not on_production_server:
+    elif not on_production_server and dev_appserver_version == 1:
         try:
-            from google.appengine.tools.devappserver2.python import sandbox
-            sandbox._WHITE_LIST_C_MODULES.extend(['fcntl'])
+            try:
+                from google.appengine.tools import dev_appserver
+            except ImportError:
+                from google.appengine.tools import old_dev_appserver as dev_appserver
 
-            for finder in sys.meta_path:
-                if isinstance(finder, sandbox.ModuleOverrideImportHook):
-                    del finder.policies['os']
-
-            from google.appengine.dist27 import MODULE_OVERRIDES
-            MODULE_OVERRIDES.remove('subprocess')
-
-            reload(os)
+            # Restore the real subprocess module.
+            from google.appengine.api.mail_stub import subprocess
+            sys.modules['subprocess'] = subprocess
+            # Re-inject the buffer() builtin into the subprocess module.
+            subprocess.buffer = dev_appserver.buffer
         except Exception, e:
             logging.warn("Could not add the subprocess module to the "
                          "sandbox: %s" % e)
