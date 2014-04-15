@@ -80,8 +80,8 @@ def setup_env(dev_appserver_version=1):
 
         if dev_appserver_version == 2:
             # emulate dev_appserver._run_file in devappserver2
-            from dev_appserver import _SYS_PATH_ADDITIONS
-            sys.path = _SYS_PATH_ADDITIONS['_python_runtime.py'] + sys.path
+            from dev_appserver import _PATHS
+            sys.path = _PATHS._script_to_paths['dev_appserver.py'] + sys.path
         fix_sys_path()
 
     setup_project(dev_appserver_version)
