@@ -204,7 +204,10 @@ class Command(BaseRunserverCommand):
                 'enable_sendmail', 'allow_skipped_files', 'disable_task_running']
         for opt in bool_options:
             if options[opt] != False:
-                args.extend(['--%s' % opt, 'yes'])
+                if settings.DEV_APPSERVER_VERSION == 1:
+                    args.append('--%s' % opt)
+                else:
+                    args.extend(['--%s' % opt, 'yes'])
 
         str_options = [
             'datastore_path', 'blobstore_path', 'history_path', 'login_url', 'smtp_host',
@@ -218,7 +221,10 @@ class Command(BaseRunserverCommand):
             arg = '--%s' % opt
             if arg not in args:
                 if value and opt in bool_options:
-                    args.extend([arg, value])
+                    if settings.DEV_APPSERVER_VERSION == 1:
+                        args.append(arg)
+                    else:
+                        args.extend([arg, value])
                 elif opt in str_options:
                     args.extend([arg, value])
                 # TODO: Issue warning about bogus option key(s)?
