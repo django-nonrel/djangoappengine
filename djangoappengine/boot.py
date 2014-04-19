@@ -132,6 +132,15 @@ def setup_logging():
     # Fix Python 2.6 logging module.
     logging.logMultiprocessing = 0
 
+    # Set logging level to INFO when running in non-debug mode
+    from djangoappengine.utils import have_appserver
+    if have_appserver:
+        # We can't import settings at this point when running a normal
+        # manage.py command because this module gets imported from
+        # settings.py.
+        from django.conf import settings
+        if not settings.DEBUG:
+            logging.getLogger().setLevel(logging.INFO)
 
 def setup_project(dev_appserver_version):
     from djangoappengine.utils import have_appserver, on_production_server
