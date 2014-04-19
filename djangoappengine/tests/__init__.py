@@ -7,3 +7,4 @@ from .test_mapreduce import DjangoModelInputReaderTest, DjangoModelIteratorTest
 from .test_not_return_sets import NonReturnSetsTest
 from .test_order import OrderTest
 from .test_transactions import TransactionTest
+from .test_storage import BlobstoreStorageTest, GSStorageTest
