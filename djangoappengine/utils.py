@@ -12,7 +12,7 @@ else:
         from google.appengine.tools.devappserver2 import application_configuration
         from djangoappengine.boot import PROJECT_DIR
         appconfig = application_configuration.ApplicationConfiguration([PROJECT_DIR])
-        appid = appconfig.app_id
+        appid = appconfig.app_id.replace('dev~', '')
     except ImportError, e:
         raise Exception("Could not get appid. Is your app.yaml file missing? "
                         "Error was: %s" % e)

@@ -88,7 +88,7 @@ class StubManager(object):
             from google.appengine.tools import dev_appserver
         except ImportError:
             from google.appengine.tools import old_dev_appserver as dev_appserver
-        dev_appserver.SetupStubs(appid, **args)
+        dev_appserver.SetupStubs('dev~' + appid, **args)
         logging.getLogger().setLevel(log_level)
         self.active_stubs = 'local'
 
@@ -96,8 +96,10 @@ class StubManager(object):
         if self.active_stubs == 'remote':
             return
         if not connection.remote_api_path:
-            from ..utils import appconfig
-            for handler in appconfig.handlers:
+            from djangoappengine.utils import appconfig
+            from google.appengine.api import appinfo
+            default_module = next(m for m in appconfig.modules if m.module_name == appinfo.DEFAULT_MODULE)
+            for handler in default_module.handlers:
                 if handler.script in REMOTE_API_SCRIPTS:
                     connection.remote_api_path = handler.url.split('(', 1)[0]
                     break
