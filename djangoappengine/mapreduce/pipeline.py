@@ -13,7 +13,8 @@ def DjangoModelMapreduce(model,
                          keys_only=False,
                          output_writer="mapreduce.output_writers.BlobstoreOutputWriter",
                          extra_mapper_params=None,
-                         extra_reducer_params=None):
+                         extra_reducer_params=None,
+                         shards=None):
     """
     A simple wrapper function for creating mapreduce jobs over a Django model.
 
@@ -53,7 +54,8 @@ def DjangoModelMapreduce(model,
         input_reader_spec,
         output_writer,
         mapper_params=mapper_params,
-        reducer_params=reducer_params)
+        reducer_params=reducer_params,
+        shards=shards)
 
 def DjangoModelMap(model,
                    mapper_func,
