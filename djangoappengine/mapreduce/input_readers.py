@@ -30,6 +30,10 @@ class DjangoModelIterator(AbstractKeyRangeIterator):
             else:
                 q = q.filter(pk__lt=k_range.key_end.id_or_name())
 
+        filters = self._query_spec.filters
+        if filters:
+            q = q.filter(**dict([[filter[0], filter[2]] for filter in filters]))
+
         q = q.order_by('pk')
 
         q = set_config(q, batch_size=self._query_spec.batch_size)
