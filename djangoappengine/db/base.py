@@ -342,7 +342,7 @@ class DatabaseWrapper(NonrelDatabaseWrapper):
             stub_manager.activate_test_stubs(self)
         else:
             destroy_datastore(get_datastore_paths(self.settings_dict))
-            stub_manager.setup_local_stubs(self)
+            stub_manager.reset_stubs(self)
 
 
 def delete_all_entities():

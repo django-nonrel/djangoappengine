@@ -35,23 +35,29 @@ class StubManager(object):
         if self.active_stubs is not None:
             return
         if not have_appserver:
+            self.activate_stubs(connection)
+
+    def activate_stubs(self, connection):
+        try:
+            from google.appengine.tools import dev_appserver_main
+            self.setup_local_stubs(connection)
+        except ImportError:
+            self.activate_test_stubs(connection)
+
+    def reset_stubs(self, connection, datastore_path=None):
+        if self.active_stubs == 'test':
+            self.deactivate_test_stubs()
+            self.activate_test_stubs(connection, datastore_path)
+
+        elif self.active_stubs == 'local':
             self.setup_local_stubs(connection)
 
-    def activate_test_stubs(self, connection):
+        elif self.active_stubs == 'remote':
+            self.setup_remote_stubs(connection)
+
+    def activate_test_stubs(self, connection, datastore_path=None):
         if self.active_stubs == 'test':
             return
-
-        os.environ['HTTP_HOST'] = "%s.appspot.com" % appid
-
-        appserver_opts = connection.settings_dict.get('DEV_APPSERVER_OPTIONS', {})
-        high_replication = appserver_opts.get('high_replication', False)
-        require_indexes = appserver_opts.get('require_indexes', False)
-
-        datastore_opts = {'require_indexes': require_indexes}
-
-        if high_replication:
-            from google.appengine.datastore import datastore_stub_util
-            datastore_opts['consistency_policy'] = datastore_stub_util.PseudoRandomHRConsistencyPolicy(probability=1)
 
         if self.testbed is None:
             from google.appengine.ext.testbed import Testbed
@@ -60,7 +66,22 @@ class StubManager(object):
         self.testbed.activate()
         self.pre_test_stubs = self.active_stubs
         self.active_stubs = 'test'
-        self.testbed.init_datastore_v3_stub(root_path=PROJECT_DIR, **datastore_opts)
+
+        os.environ['APPLICATION_ID'] = 'dev~' + appid
+        os.environ['HTTP_HOST'] = "%s.appspot.com" % appid
+
+        appserver_opts = connection.settings_dict.get('DEV_APPSERVER_OPTIONS', {})
+        high_replication = appserver_opts.get('high_replication', False)
+        require_indexes = appserver_opts.get('require_indexes', False)
+        use_sqlite = appserver_opts.get('use_sqlite', False)
+
+        datastore_opts = {'require_indexes': require_indexes, 'use_sqlite': use_sqlite}
+
+        if high_replication:
+            from google.appengine.datastore import datastore_stub_util
+            datastore_opts['consistency_policy'] = datastore_stub_util.PseudoRandomHRConsistencyPolicy(probability=1)
+
+        self.testbed.init_datastore_v3_stub(datastore_file=datastore_path, **datastore_opts)
         self.testbed.init_memcache_stub()
         self.testbed.init_taskqueue_stub(auto_task_running=True, root_path=PROJECT_DIR)
         self.testbed.init_urlfetch_stub()
@@ -76,6 +97,7 @@ class StubManager(object):
     def setup_local_stubs(self, connection):
         if self.active_stubs == 'local':
             return
+
         from .base import get_datastore_paths
         from google.appengine.tools import dev_appserver_main
         args = dev_appserver_main.DEFAULT_ARGS.copy()

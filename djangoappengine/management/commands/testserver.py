@@ -25,7 +25,7 @@ class Command(BaseCommand):
     def handle(self, *fixture_labels, **options):
         from django.core.management import call_command
         from django import db
-        from ...db.base import get_datastore_paths, DatabaseWrapper
+        from ...db.base import get_datastore_paths, destroy_datastore, DatabaseWrapper
         from ...db.stubs import stub_manager
 
         verbosity = int(options.get('verbosity'))
@@ -38,11 +38,9 @@ class Command(BaseCommand):
                 settings = conn.settings_dict
                 for key, path in get_datastore_paths(settings).items():
                     settings[key] = "%s-testdb" % path
-                conn.flush()
+                destroy_datastore(get_datastore_paths(settings))
 
-                # reset stub manager
-                stub_manager.active_stubs = None
-                stub_manager.setup_local_stubs(conn)
+                stub_manager.reset_stubs(conn, datastore_path=settings['datastore_path'])
 
                 db_name = name
                 break
