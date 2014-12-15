@@ -178,18 +178,12 @@ class Command(BaseRunserverCommand):
         for name in connections:
             connection = connections[name]
             if isinstance(connection, DatabaseWrapper):
-                for key, path in get_datastore_paths(
-                        connection.settings_dict).items():
-                    # XXX/TODO: Remove this when SDK 1.4.3 is released.
-                    if key == 'prospective_search_path':
-                        continue
-
+                for key, path in get_datastore_paths(connection.settings_dict).items():
                     arg = '--' + key
                     if arg not in args:
                         args.extend([arg, path])
                 # Get dev_appserver option presets, to be applied below.
-                preset_options = connection.settings_dict.get(
-                    'DEV_APPSERVER_OPTIONS', {})
+                preset_options = connection.settings_dict.get('DEV_APPSERVER_OPTIONS', {})
                 break
 
         # Process the rest of the options here.

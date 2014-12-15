@@ -158,7 +158,7 @@ class DatabaseOperations(NonrelDatabaseOperations):
                 value = key_from_path(field.model._meta.db_table, value)
             except (BadArgumentError, BadValueError,):
                 raise DatabaseError("Only strings and positive integers "
-                                    "may be used as keys on GAE.")
+                                    "may be used as keys on GAE. Received %r." % value)
 
         # Store all strings as unicode, use db.Text for longer content.
         elif db_type == 'string' or db_type == 'text':
