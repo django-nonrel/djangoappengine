@@ -10,6 +10,7 @@ However, there are limitations to be aware of when running contrib.admin against
 * need to use dbindexer to index date/datetime fields used for date filters
 
 Some of the consequences of the above restrictions:
+
 * can't find users created before 2012 sorted by name
 * can't find users like "Peter" sorted by date joined
 * can't sort by multiple columns
