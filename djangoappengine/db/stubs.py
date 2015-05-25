@@ -91,6 +91,7 @@ class StubManager(object):
         self.testbed.init_app_identity_stub()
         self.testbed.init_blobstore_stub()
         self.testbed.init_files_stub()
+        self.testbed.init_images_stub()
 
     def deactivate_test_stubs(self):
         if self.active_stubs == 'test':

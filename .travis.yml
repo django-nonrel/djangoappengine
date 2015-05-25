@@ -20,6 +20,7 @@ install:
   - pip install git+http://github.com/django-nonrel/djangotoolbox@master\#egg=djangotoolbox --target=$PWD
   - pip install git+http://github.com/django-nonrel/django-dbindexer@master\#egg=django-dbindexer --target=$PWD
   - pip install git+https://github.com/adieu/django-autoload\#egg=django-autoload --target=$PWD
+  - pip install Pillow
 
 before_script:
   - wget https://storage.googleapis.com/appengine-sdks/featured/google_appengine_$APPENGINE_SDK_VERSION.zip -nv
