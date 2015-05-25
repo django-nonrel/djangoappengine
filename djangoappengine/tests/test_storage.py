@@ -89,7 +89,7 @@ class BlobstoreStorageTest(AppEngineStorageBaseTest, TestCase):
 
     def test_file_url(self):
         url = self.storage.url(self.file_key)
-        self.assertEqual(url, 'http://localhost:8080/_ah/img/%s' % self.file_key)
+        self.assertEqual(url, '/_ah/img/%s' % self.file_key)
 
 @unittest.skipUnless(cloudstorage, 'cloudstorage not installed')
 class GSStorageTest(AppEngineStorageBaseTest, TestCase):
@@ -110,4 +110,4 @@ class GSStorageTest(AppEngineStorageBaseTest, TestCase):
 
     def test_file_url(self):
         url = self.storage.url(self.file_key)
-        self.assertTrue(url.startswith('http://localhost:8080/_ah/img/encoded_gs_file:'))
+        self.assertTrue(url.startswith('/_ah/img/encoded_gs_file:'))
