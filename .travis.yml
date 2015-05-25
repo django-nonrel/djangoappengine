@@ -9,7 +9,7 @@ python:
 
 env:
   global:
-    - APPENGINE_SDK_VERSION=1.9.7
+    - APPENGINE_SDK_VERSION=1.9.21
   matrix:
     - DJANGO_VERSION=1.4
     - DJANGO_VERSION=1.5
@@ -22,7 +22,7 @@ install:
   - pip install git+https://github.com/adieu/django-autoload\#egg=django-autoload --target=$PWD
 
 before_script:
-  - wget https://commondatastorage.googleapis.com/appengine-sdks/featured/google_appengine_$APPENGINE_SDK_VERSION.zip -nv
+  - wget https://storage.googleapis.com/appengine-sdks/featured/google_appengine_$APPENGINE_SDK_VERSION.zip -nv
   - unzip -q google_appengine_$APPENGINE_SDK_VERSION.zip
   - PYTHONPATH=. python django/bin/django-admin.py startproject --name=app.yaml --template=djangoappengine/conf/project_template appenginetest .
 
