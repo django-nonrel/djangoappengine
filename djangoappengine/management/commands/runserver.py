@@ -2,16 +2,28 @@ import logging
 from optparse import make_option
 import sys
 
-from django.db import connections
+from django.conf import settings
 from django.core.management.base import BaseCommand
-from django.core.management.commands.runserver import BaseRunserverCommand
+from django.core.management.commands.runserver import BaseRunserverCommand, DEFAULT_PORT
 from django.core.exceptions import ImproperlyConfigured
+from django.db import connections
 
-from google.appengine.tools import dev_appserver_main
+from djangoappengine.boot import PROJECT_DIR
+from djangoappengine.db.base import DatabaseWrapper, get_datastore_paths
 
-from ...boot import PROJECT_DIR
-from ...db.base import DatabaseWrapper, get_datastore_paths
+if settings.DEV_APPSERVER_VERSION == 1:
+    from google.appengine.tools import dev_appserver_main
+else:
+    import os
+    import _python_runtime
+    sys.argv[0] = os.path.join(
+                    os.path.dirname(_python_runtime.__file__),
+                    "devappserver2.py")
+    # The following import sets the path for _python_runtime.py from
+    # sys.argv[0], so we need to hack sys.argv[0] before this import
+    from google.appengine.tools.devappserver2 import devappserver2
 
+DEV_APPSERVER_V2_DEFAULT_PORT = "8080"
 
 class Command(BaseRunserverCommand):
     """
@@ -24,6 +36,10 @@ class Command(BaseRunserverCommand):
     """
 
     option_list = BaseCommand.option_list + (
+         make_option(
+            '--auto_id_policy',
+            help="Dictate how automatic IDs are assigned by the datastore " \
+                 "stub. 'sequential' or 'scattered'."),
         make_option(
             '--debug', action='store_true', default=False,
             help="Prints verbose debugging messages to the console while " \
@@ -106,7 +122,10 @@ class Command(BaseRunserverCommand):
         parse the arguments to this command.
         """
         # Hack __main__ so --help in dev_appserver_main works OK.
-        sys.modules['__main__'] = dev_appserver_main
+        if settings.DEV_APPSERVER_VERSION == 1:
+            sys.modules['__main__'] = dev_appserver_main
+        else:
+            sys.modules['__main__'] = devappserver2
         return super(Command, self).create_parser(prog_name, subcommand)
 
     def run_from_argv(self, argv):
@@ -130,9 +149,15 @@ class Command(BaseRunserverCommand):
         args = []
         # Set bind ip/port if specified.
         if self.addr:
-            args.extend(['--address', self.addr])
+            if settings.DEV_APPSERVER_VERSION == 1:
+                args.extend(['--address', self.addr])
+            else:
+                args.extend(['--host', self.addr])
         if self.port:
-            args.extend(['--port', self.port])
+            if settings.DEV_APPSERVER_VERSION == 1:
+                args.extend(['--port', self.port])
+            else:
+                args.extend(['--port', self.port if self.port != DEFAULT_PORT else DEV_APPSERVER_V2_DEFAULT_PORT])
 
         # If runserver is called using handle(), progname will not be
         # set.
@@ -140,7 +165,6 @@ class Command(BaseRunserverCommand):
             self.progname = 'manage.py'
 
         # Add email settings.
-        from django.conf import settings
         if not options.get('smtp_host', None) and \
            not options.get('enable_sendmail', None):
             args.extend(['--smtp_host', settings.EMAIL_HOST,
@@ -154,32 +178,34 @@ class Command(BaseRunserverCommand):
         for name in connections:
             connection = connections[name]
             if isinstance(connection, DatabaseWrapper):
-                for key, path in get_datastore_paths(
-                        connection.settings_dict).items():
-                    # XXX/TODO: Remove this when SDK 1.4.3 is released.
-                    if key == 'prospective_search_path':
-                        continue
-
+                for key, path in get_datastore_paths(connection.settings_dict).items():
                     arg = '--' + key
                     if arg not in args:
                         args.extend([arg, path])
                 # Get dev_appserver option presets, to be applied below.
-                preset_options = connection.settings_dict.get(
-                    'DEV_APPSERVER_OPTIONS', {})
+                preset_options = connection.settings_dict.get('DEV_APPSERVER_OPTIONS', {})
                 break
 
         # Process the rest of the options here.
-        bool_options = [
-            'debug', 'debug_imports', 'clear_datastore', 'require_indexes',
-            'high_replication', 'enable_sendmail', 'use_sqlite',
-            'allow_skipped_files', 'disable_task_running', ]
+        if settings.DEV_APPSERVER_VERSION == 1:
+            bool_options = [
+                'debug', 'debug_imports', 'clear_datastore', 'require_indexes',
+                'high_replication', 'enable_sendmail', 'use_sqlite',
+                'allow_skipped_files', 'disable_task_running']
+        else:
+            bool_options = [
+                'debug', 'debug_imports', 'clear_datastore', 'require_indexes',
+                'enable_sendmail', 'allow_skipped_files', 'disable_task_running']
         for opt in bool_options:
             if options[opt] != False:
-                args.append('--%s' % opt)
+                if settings.DEV_APPSERVER_VERSION == 1:
+                    args.append('--%s' % opt)
+                else:
+                    args.extend(['--%s' % opt, 'yes'])
 
         str_options = [
             'datastore_path', 'blobstore_path', 'history_path', 'login_url', 'smtp_host',
-            'smtp_port', 'smtp_user', 'smtp_password', ]
+            'smtp_port', 'smtp_user', 'smtp_password', 'auto_id_policy']
         for opt in str_options:
             if options.get(opt, None) != None:
                 args.extend(['--%s' % opt, options[opt]])
@@ -189,7 +215,10 @@ class Command(BaseRunserverCommand):
             arg = '--%s' % opt
             if arg not in args:
                 if value and opt in bool_options:
-                    args.append(arg)
+                    if settings.DEV_APPSERVER_VERSION == 1:
+                        args.append(arg)
+                    else:
+                        args.extend([arg, value])
                 elif opt in str_options:
                     args.extend([arg, value])
                 # TODO: Issue warning about bogus option key(s)?
@@ -199,4 +228,14 @@ class Command(BaseRunserverCommand):
         logging.getLogger().setLevel(logging.INFO)
 
         # Append the current working directory to the arguments.
-        dev_appserver_main.main([self.progname] + args + [PROJECT_DIR])
+        if settings.DEV_APPSERVER_VERSION == 1:
+            dev_appserver_main.main([self.progname] + args + [PROJECT_DIR])
+        else:
+            from google.appengine.api import apiproxy_stub_map
+
+            # Environment is set in djangoappengine.stubs.setup_local_stubs()
+            # We need to do this effectively reset the stubs.
+            apiproxy_stub_map.apiproxy = apiproxy_stub_map.GetDefaultAPIProxy()
+
+            sys.argv = ['/home/user/google_appengine/devappserver2.py'] + args + [PROJECT_DIR]
+            devappserver2.main()

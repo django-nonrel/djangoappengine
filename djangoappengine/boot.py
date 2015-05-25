@@ -22,8 +22,11 @@ if 'DJANGO_SETTINGS_MODULE' not in os.environ:
     env_ext['DJANGO_SETTINGS_MODULE'] = 'settings'
 
 
-def setup_env():
+def setup_env(dev_appserver_version=1):
     """Configures GAE environment for command-line apps."""
+
+    if dev_appserver_version not in (1, 2):
+        raise Exception('Invalid dev_appserver_version setting, expected 1 or 2, got %s' % dev_appserver_version)
 
     # Try to import the appengine code from the system path.
     try:
@@ -74,10 +77,16 @@ def setup_env():
             from dev_appserver import fix_sys_path
         except ImportError:
             from old_dev_appserver import fix_sys_path
+
+        if dev_appserver_version == 2:
+            # emulate dev_appserver._run_file in devappserver2
+            from dev_appserver import _PATHS
+            sys.path = _PATHS._script_to_paths['dev_appserver.py'] + sys.path
         fix_sys_path()
 
-    setup_project()
-    from .utils import have_appserver
+    setup_project(dev_appserver_version)
+
+    from djangoappengine.utils import have_appserver
     if have_appserver:
         # App Engine's threading.local is broken.
         setup_threading()
@@ -123,21 +132,18 @@ def setup_logging():
     # Fix Python 2.6 logging module.
     logging.logMultiprocessing = 0
 
-    # Enable logging.
-    level = logging.DEBUG
-    from .utils import have_appserver
+    # Set logging level to INFO when running in non-debug mode
+    from djangoappengine.utils import have_appserver
     if have_appserver:
         # We can't import settings at this point when running a normal
         # manage.py command because this module gets imported from
         # settings.py.
         from django.conf import settings
         if not settings.DEBUG:
-            level = logging.INFO
-    logging.getLogger().setLevel(level)
+            logging.getLogger().setLevel(logging.INFO)
 
-
-def setup_project():
-    from .utils import have_appserver, on_production_server
+def setup_project(dev_appserver_version):
+    from djangoappengine.utils import have_appserver, on_production_server
     if have_appserver:
         # This fixes a pwd import bug for os.path.expanduser().
         env_ext['HOME'] = PROJECT_DIR
@@ -145,11 +151,11 @@ def setup_project():
     # The dev_appserver creates a sandbox which restricts access to
     # certain modules and builtins in order to emulate the production
     # environment. Here we get the subprocess module back into the
-    # dev_appserver sandbox.This module is just too important for
+    # dev_appserver sandbox. This module is just too important for
     # development. Also we add the compiler/parser module back and
     # enable https connections (seem to be broken on Windows because
     # the _ssl module is disallowed).
-    if not have_appserver:
+    if not have_appserver and dev_appserver_version == 1:
         try:
             from google.appengine.tools import dev_appserver
         except ImportError:
@@ -178,7 +184,7 @@ def setup_project():
             logging.warn("Could not patch modules whitelist. the compiler "
                          "and parser modules will not work and SSL support "
                          "is disabled.")
-    elif not on_production_server:
+    elif not on_production_server and dev_appserver_version == 1:
         try:
             try:
                 from google.appengine.tools import dev_appserver

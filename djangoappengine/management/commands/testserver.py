@@ -1,12 +1,14 @@
 from django.core.management.base import BaseCommand
 
+from djangoappengine.management.commands.runserver import Command as RunServerCommand
+
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.datastore import datastore_stub_util
 
 from optparse import make_option
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
+    option_list = RunServerCommand.option_list + (
         make_option('--noinput', action='store_false', dest='interactive', default=True,
             help='Tells Django to NOT prompt the user for input of any kind.'),
         make_option('--addrport', action='store', dest='addrport',
@@ -23,12 +25,10 @@ class Command(BaseCommand):
     def handle(self, *fixture_labels, **options):
         from django.core.management import call_command
         from django import db
-        from ...db.base import get_datastore_paths, DatabaseWrapper
+        from ...db.base import get_datastore_paths, destroy_datastore, DatabaseWrapper
         from ...db.stubs import stub_manager
 
         verbosity = int(options.get('verbosity'))
-        interactive = options.get('interactive')
-        addrport = options.get('addrport')
 
         db_name = None
 
@@ -38,11 +38,9 @@ class Command(BaseCommand):
                 settings = conn.settings_dict
                 for key, path in get_datastore_paths(settings).items():
                     settings[key] = "%s-testdb" % path
-                conn.flush()
+                destroy_datastore(get_datastore_paths(settings))
 
-                # reset stub manager
-                stub_manager.active_stubs = None
-                stub_manager.setup_local_stubs(conn)
+                stub_manager.reset_stubs(conn, datastore_path=settings['datastore_path'])
 
                 db_name = name
                 break
@@ -63,4 +61,4 @@ class Command(BaseCommand):
         # a strange error -- it causes this handle() method to be called
         # multiple times.
         shutdown_message = '\nServer stopped.\nNote that the test database, %r, has not been deleted. You can explore it on your own.' % db_name
-        call_command('runserver', addrport=addrport, shutdown_message=shutdown_message, use_reloader=False, use_ipv6=options['use_ipv6'])
+        call_command('runserver', shutdown_message=shutdown_message, use_reloader=False, **options)
