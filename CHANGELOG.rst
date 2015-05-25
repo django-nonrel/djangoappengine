@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Version 1.6.3 (TBD)
+Version 1.6.3 (May 24, 2015)
 -------------
 
 * Add 'require_indexes' option to database 'DEV_APPSERVER_OPTIONS' to throw
