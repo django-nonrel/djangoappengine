@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Version 1.7.0 (May 24, 2015)
+-------------
+
+* Add support for devappserver2 (Thanks dragonx, jacobg)
+
 Version 1.6.3 (May 24, 2015)
 -------------
 
