@@ -3,3 +3,5 @@ docs/_build
 .DS_Store
 
 MANIFEST
+dist/
+djangoappengine.egg-info/
