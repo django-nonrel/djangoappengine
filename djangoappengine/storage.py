@@ -246,7 +246,7 @@ class AppEngineFileUploadHandler(FileUploadHandler):
     """
 
     def new_file(self, *args, **kwargs):
-        super(BlobstoreFileUploadHandler, self).new_file(*args, **kwargs)
+        super(AppEngineFileUploadHandler, self).new_file(*args, **kwargs)
         blobkey = self.content_type_extra.get('blob-key')
         self.activated = blobkey is not None
         if self.activated:
