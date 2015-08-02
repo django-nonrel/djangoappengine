@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Version 1.7.1 (Aug 2, 2015)
+-------------
+
+* Add support for Google Cloud Storage
+
 Version 1.7.0 (May 24, 2015)
 -------------
 

@@ -9,7 +9,7 @@ except:
     pass
 
 setup(name='djangoappengine',
-      version='1.7.0',
+      version='1.7.1',
       description=DESCRIPTION,
       long_description=LONG_DESCRIPTION,
       author='Waldemar Kornewald',
